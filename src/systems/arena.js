@@ -7,6 +7,76 @@ import { CONFIG } from '../config.js';
 
 const PIXI = window.PIXI;
 
+class MarqueeRow {
+  constructor(y, speed, colorHex, defaultText) {
+    this.container = new PIXI.Container();
+    this.container.y = y;
+    this.speed = speed;
+    this.colorHex = colorHex;
+    this.defaultText = defaultText;
+    this.spacing = 60;
+
+    // Subtle dark cyber track strip
+    this.trackBg = new PIXI.Graphics();
+    this.trackBg.beginFill(0x070510, 0.72);
+    this.trackBg.drawRect(0, -10, CONFIG.STAGE_WIDTH, 20);
+    this.trackBg.endFill();
+    this.container.addChild(this.trackBg);
+
+    const style = {
+      fontFamily: 'Montserrat, Rajdhani, sans-serif',
+      fontSize: 13,
+      fontWeight: '800',
+      fill: colorHex,
+      dropShadow: true,
+      dropShadowColor: colorHex,
+      dropShadowBlur: 4,
+      letterSpacing: 0.5,
+    };
+
+    this.textA = new PIXI.Text(defaultText, style);
+    this.textB = new PIXI.Text(defaultText, style);
+    this.textA.anchor.set(0, 0.5);
+    this.textB.anchor.set(0, 0.5);
+
+    this.container.addChild(this.textA);
+    this.container.addChild(this.textB);
+
+    this.updateContent(defaultText);
+  }
+
+  updateContent(textString) {
+    const raw = (textString || '').trim();
+    if (!raw) return;
+
+    let repeated = raw;
+    this.textA.text = repeated;
+    let safety = 0;
+    while (this.textA.width < CONFIG.STAGE_WIDTH + 400 && safety < 40) {
+      repeated += '    ' + raw;
+      this.textA.text = repeated;
+      safety++;
+    }
+    this.textB.text = repeated;
+
+    this.textA.x = 0;
+    this.textB.x = this.textA.width + this.spacing;
+  }
+
+  update(delta) {
+    const shift = this.speed * (delta / 60);
+    this.textA.x -= shift;
+    this.textB.x -= shift;
+
+    if (this.textA.x + this.textA.width < 0) {
+      this.textA.x = this.textB.x + this.textB.width + this.spacing;
+    }
+    if (this.textB.x + this.textB.width < 0) {
+      this.textB.x = this.textA.x + this.textA.width + this.spacing;
+    }
+  }
+}
+
 export class Arena extends PIXI.Container {
   constructor(app) {
     super();
@@ -43,7 +113,12 @@ export class Arena extends PIXI.Container {
     this.shakeIntensity = 0;
     this.shakeTime = 0;
 
+    // Registered player nicknames for dual-row marquee tickers
+    this.redNicknames = [];
+    this.blueNicknames = [];
+
     this.buildStaticElements();
+    this.buildMarqueeTickers();
     this.buildBall();
     this.buildUIBadges();
   }
@@ -129,21 +204,103 @@ export class Arena extends PIXI.Container {
     this.ballContainer.addChild(this.ball);
   }
 
+  buildMarqueeTickers() {
+    this.tickersContainer = new PIXI.Container();
+    this.uiOverlayContainer.addChild(this.tickersContainer);
+
+    // Red Team Tickers (Top Edge, Y ≈ 30px to 80px)
+    // Row 1: Y = 28px, Speed = 52 px/s
+    // Row 2: Y = 74px, Speed = 40 px/s
+    this.redTicker1 = new MarqueeRow(28, 52, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ KIRMIZI TAKIM ARAMIZA KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+    this.redTicker2 = new MarqueeRow(74, 40, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ ATEŞ GÜCÜNE KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+
+    // Blue Team Tickers (Bottom Edge, Y ≈ 1840px to 1890px)
+    // Row 1: Y = 1844px, Speed = 44 px/s
+    // Row 2: Y = 1892px, Speed = 56 px/s
+    this.blueTicker1 = new MarqueeRow(1844, 44, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ MAVİ TAKIM ARAMIZA KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+    this.blueTicker2 = new MarqueeRow(1892, 56, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ SİBER GÜCE KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+
+    this.tickersContainer.addChild(this.redTicker1.container);
+    this.tickersContainer.addChild(this.redTicker2.container);
+    this.tickersContainer.addChild(this.blueTicker1.container);
+    this.tickersContainer.addChild(this.blueTicker2.container);
+  }
+
+  addPlayerToTicker(team, nickname) {
+    if (!nickname) return;
+    const isRed = (team === 'RED');
+    const list = isRed ? this.redNicknames : this.blueNicknames;
+    if (!list.includes(nickname)) {
+      list.push(nickname);
+    }
+    this.refreshTeamTickers(team);
+  }
+
+  refreshTeamTickers(team) {
+    const isRed = (team === 'RED');
+    const list = isRed ? this.redNicknames : this.blueNicknames;
+    const divider = isRed ? '⚔️' : '🛡️';
+
+    if (list.length === 0) {
+      if (isRed) {
+        this.redTicker1.updateContent('⚔️ KIRMIZI TAKIM ARAMIZA KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+        this.redTicker2.updateContent('⚔️ ATEŞ GÜCÜNE KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+      } else {
+        this.blueTicker1.updateContent('🛡️ MAVİ TAKIM ARAMIZA KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+        this.blueTicker2.updateContent('🛡️ SİBER GÜCE KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+      }
+      return;
+    }
+
+    if (list.length === 1) {
+      const single = `@${list[0]}`;
+      if (isRed) {
+        this.redTicker1.updateContent(`${single} ${divider} KIRMIZI SAVAŞÇI ${divider}`);
+        this.redTicker2.updateContent(`${single} ${divider} ATEŞ GÜCÜ ${divider}`);
+      } else {
+        this.blueTicker1.updateContent(`${single} ${divider} MAVİ SAVAŞÇI ${divider}`);
+        this.blueTicker2.updateContent(`${single} ${divider} SİBER GÜÇ ${divider}`);
+      }
+      return;
+    }
+
+    const row1Names = list.filter((_, idx) => idx % 2 === 0).map(n => `@${n}`);
+    const row2Names = list.filter((_, idx) => idx % 2 === 1).map(n => `@${n}`);
+
+    const str1 = row1Names.join(` ${divider} `) + ` ${divider} `;
+    const str2 = (row2Names.length > 0 ? row2Names.join(` ${divider} `) : row1Names.join(` ${divider} `)) + ` ${divider} `;
+
+    if (isRed) {
+      this.redTicker1.updateContent(str1);
+      this.redTicker2.updateContent(str2);
+    } else {
+      this.blueTicker1.updateContent(str1);
+      this.blueTicker2.updateContent(str2);
+    }
+  }
+
+  updateTickers(delta) {
+    if (this.redTicker1) this.redTicker1.update(delta);
+    if (this.redTicker2) this.redTicker2.update(delta);
+    if (this.blueTicker1) this.blueTicker1.update(delta);
+    if (this.blueTicker2) this.blueTicker2.update(delta);
+  }
+
   buildUIBadges() {
     // Red Team Top Header Badge
     this.redBadge = new PIXI.Container();
     this.redBadge.x = CONFIG.STAGE_WIDTH / 2;
-    this.redBadge.y = 50;
+    this.redBadge.y = 51;
 
     const rBg = new PIXI.Graphics();
-    rBg.beginFill(0x160814, 0.92);
+    rBg.beginFill(0x160814, 0.94);
     rBg.lineStyle(2.5, CONFIG.RED_ZONE.COLOR, 1);
-    rBg.drawRoundedRect(-220, -32, 440, 64, 16);
+    rBg.drawRoundedRect(-220, -25, 440, 50, 14);
     rBg.endFill();
 
     this.redTitleText = new PIXI.Text('KIRMIZI TAKIM', {
       fontFamily: 'Montserrat, sans-serif',
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: '900',
       fill: CONFIG.RED_ZONE.COLOR_HEX,
       dropShadow: true,
@@ -154,7 +311,7 @@ export class Arena extends PIXI.Container {
 
     this.redStatsText = new PIXI.Text('0 Savaşçı | 0 Puan', {
       fontFamily: 'Rajdhani, sans-serif',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       fill: '#E2E8F0',
     });
@@ -168,17 +325,17 @@ export class Arena extends PIXI.Container {
     // Blue Team Bottom Header Badge
     this.blueBadge = new PIXI.Container();
     this.blueBadge.x = CONFIG.STAGE_WIDTH / 2;
-    this.blueBadge.y = CONFIG.STAGE_HEIGHT - 50;
+    this.blueBadge.y = 1868;
 
     const bBg = new PIXI.Graphics();
-    bBg.beginFill(0x06141F, 0.92);
+    bBg.beginFill(0x06141F, 0.94);
     bBg.lineStyle(2.5, CONFIG.BLUE_ZONE.COLOR, 1);
-    bBg.drawRoundedRect(-220, -32, 440, 64, 16);
+    bBg.drawRoundedRect(-220, -25, 440, 50, 14);
     bBg.endFill();
 
     this.blueTitleText = new PIXI.Text('MAVİ TAKIM', {
       fontFamily: 'Montserrat, sans-serif',
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: '900',
       fill: CONFIG.BLUE_ZONE.COLOR_HEX,
       dropShadow: true,
@@ -189,7 +346,7 @@ export class Arena extends PIXI.Container {
 
     this.blueStatsText = new PIXI.Text('0 Savaşçı | 0 Puan', {
       fontFamily: 'Rajdhani, sans-serif',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       fill: '#E2E8F0',
     });
@@ -252,6 +409,12 @@ export class Arena extends PIXI.Container {
     this.pushRatio = 0.5;
     this.ballText.text = '50%';
     this.updateTeamStats(0, 0, 0, 0, 0, 0);
+
+    // Reset dual-row marquee tickers to default prompts
+    this.redNicknames = [];
+    this.blueNicknames = [];
+    this.refreshTeamTickers('RED');
+    this.refreshTeamTickers('BLUE');
   }
 
   // Fire an action-triggered laser beam or mega-beam to the ball (fades out in 0.4s or 0.9s)
@@ -406,6 +569,9 @@ export class Arena extends PIXI.Container {
 
     // 4. Render Active Action Laser Beams
     this.renderBeams(delta);
+
+    // 5. Update Dual-Row Marquee Tickers (60 FPS)
+    this.updateTickers(delta);
   }
 
   renderBallGraphics() {

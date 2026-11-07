@@ -130,6 +130,174 @@ export class GameManager {
     this.leaderboardOverlay = new PIXI.Container();
     this.leaderboardOverlay.visible = false;
     this.hudLayer.addChild(this.leaderboardOverlay);
+
+    // 5. Team Instant Join Toasts (Red at Y=128, Blue at Y=1792, animated for 1.8s)
+    this.redJoinToastContainer = new PIXI.Container();
+    this.redJoinToastContainer.x = CONFIG.STAGE_WIDTH / 2;
+    this.redJoinToastContainer.y = 128;
+    this.redJoinToastContainer.alpha = 0;
+    this.redJoinToastBg = new PIXI.Graphics();
+    this.redJoinToastText = new PIXI.Text('', {
+      fontFamily: 'Montserrat, Rajdhani, sans-serif',
+      fontSize: 15,
+      fontWeight: '900',
+      fill: CONFIG.RED_ZONE.COLOR_HEX,
+      dropShadow: true,
+      dropShadowColor: CONFIG.RED_ZONE.COLOR_HEX,
+      dropShadowBlur: 6,
+    });
+    this.redJoinToastText.anchor.set(0.5);
+    this.redJoinToastContainer.addChild(this.redJoinToastBg);
+    this.redJoinToastContainer.addChild(this.redJoinToastText);
+    this.hudLayer.addChild(this.redJoinToastContainer);
+
+    this.blueJoinToastContainer = new PIXI.Container();
+    this.blueJoinToastContainer.x = CONFIG.STAGE_WIDTH / 2;
+    this.blueJoinToastContainer.y = 1792;
+    this.blueJoinToastContainer.alpha = 0;
+    this.blueJoinToastBg = new PIXI.Graphics();
+    this.blueJoinToastText = new PIXI.Text('', {
+      fontFamily: 'Montserrat, Rajdhani, sans-serif',
+      fontSize: 15,
+      fontWeight: '900',
+      fill: CONFIG.BLUE_ZONE.COLOR_HEX,
+      dropShadow: true,
+      dropShadowColor: CONFIG.BLUE_ZONE.COLOR_HEX,
+      dropShadowBlur: 6,
+    });
+    this.blueJoinToastText.anchor.set(0.5);
+    this.blueJoinToastContainer.addChild(this.blueJoinToastBg);
+    this.blueJoinToastContainer.addChild(this.blueJoinToastText);
+    this.hudLayer.addChild(this.blueJoinToastContainer);
+
+    // 6. Unregistered Action Prompt Banner (Y ≈ 475, near center HUD)
+    this.unregisteredHintContainer = new PIXI.Container();
+    this.unregisteredHintContainer.x = CONFIG.STAGE_WIDTH / 2;
+    this.unregisteredHintContainer.y = 475;
+    this.unregisteredHintContainer.alpha = 0;
+
+    const uBg = new PIXI.Graphics();
+    uBg.beginFill(0x120824, 0.96);
+    uBg.lineStyle(2, 0xFFD700, 0.95);
+    uBg.drawRoundedRect(-320, -22, 640, 44, 14);
+    uBg.endFill();
+
+    const uText = new PIXI.Text('⚡ Tarafını seç! Chate KIRMIZI veya MAVİ yaz ve savaşa katıl! ⚡', {
+      fontFamily: 'Montserrat, Rajdhani, sans-serif',
+      fontSize: 15,
+      fontWeight: '900',
+      fill: '#FFD700',
+      dropShadow: true,
+      dropShadowColor: '#FF6600',
+      dropShadowBlur: 6,
+    });
+    uText.anchor.set(0.5);
+
+    this.unregisteredHintContainer.addChild(uBg);
+    this.unregisteredHintContainer.addChild(uText);
+    this.hudLayer.addChild(this.unregisteredHintContainer);
+  }
+
+  showJoinToast(team, nickname, wasBalanced = false) {
+    const isRed = (team === 'RED');
+    const container = isRed ? this.redJoinToastContainer : this.blueJoinToastContainer;
+    const bg = isRed ? this.redJoinToastBg : this.blueJoinToastBg;
+    const label = isRed ? this.redJoinToastText : this.blueJoinToastText;
+    const colorHex = isRed ? CONFIG.RED_ZONE.COLOR_HEX : CONFIG.BLUE_ZONE.COLOR_HEX;
+    const colorInt = isRed ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
+    const icon = isRed ? '⚔️' : '🛡️';
+
+    let msg = '';
+    if (wasBalanced) {
+      msg = `${icon} @${nickname} DENGELEME İÇİN ${isRed ? 'KIRMIZIYA' : 'MAVİYE'} AKTARILDI! ${icon}`;
+    } else {
+      msg = `${icon} @${nickname} ${isRed ? 'KIRMIZI' : 'MAVİ'} TAKIMA KATILDI! ${icon}`;
+    }
+
+    label.text = msg;
+    label.style.fill = colorHex;
+    label.style.dropShadowColor = colorHex;
+
+    const padX = 24;
+    const w = Math.max(340, label.width + padX * 2);
+    const h = 42;
+
+    bg.clear();
+    bg.beginFill(0x0A0816, 0.94);
+    bg.lineStyle(2, colorInt, 1);
+    bg.drawRoundedRect(-w / 2, -h / 2, w, h, 12);
+    bg.endFill();
+
+    // Inner bright neon accent line
+    bg.lineStyle(1, 0xFFFFFF, 0.55);
+    bg.drawRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 4, 10);
+
+    gsap.killTweensOf(container);
+    gsap.killTweensOf(container.scale);
+
+    const targetY = isRed ? 128 : 1792;
+    const startY = isRed ? 100 : 1820;
+
+    container.y = startY;
+    container.alpha = 0;
+    container.scale.set(0.75);
+
+    // 1.8 seconds total duration
+    gsap.timeline()
+      .to(container, {
+        alpha: 1,
+        y: targetY,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 0.28,
+        ease: 'back.out(1.8)'
+      })
+      .to(container, {
+        alpha: 0,
+        y: startY,
+        scaleX: 0.85,
+        scaleY: 0.85,
+        duration: 0.32,
+        delay: 1.2
+      });
+  }
+
+  showUnregisteredHint() {
+    const now = Date.now();
+    if (this.lastUnregisteredHintTime && now - this.lastUnregisteredHintTime < 1800) {
+      return;
+    }
+    this.lastUnregisteredHintTime = now;
+
+    gsap.killTweensOf(this.unregisteredHintContainer);
+    gsap.killTweensOf(this.unregisteredHintContainer.scale);
+
+    this.unregisteredHintContainer.y = 475;
+    this.unregisteredHintContainer.alpha = 0;
+    this.unregisteredHintContainer.scale.set(0.8);
+
+    gsap.timeline()
+      .to(this.unregisteredHintContainer, {
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 0.25,
+        ease: 'back.out(1.5)'
+      })
+      .to(this.unregisteredHintContainer.scale, {
+        x: 1.04,
+        y: 1.04,
+        duration: 0.3,
+        yoyo: true,
+        repeat: 1
+      })
+      .to(this.unregisteredHintContainer, {
+        alpha: 0,
+        scaleX: 0.85,
+        scaleY: 0.85,
+        duration: 0.35,
+        delay: 1.6
+      });
   }
 
   showToast(message, color = 0x00E5FF) {
@@ -228,6 +396,9 @@ export class GameManager {
     if (this.arena.resetRound) {
       this.arena.resetRound();
     }
+    if (this.redJoinToastContainer) this.redJoinToastContainer.alpha = 0;
+    if (this.blueJoinToastContainer) this.blueJoinToastContainer.alpha = 0;
+    if (this.unregisteredHintContainer) this.unregisteredHintContainer.alpha = 0;
 
     // 5. Reset physics & hide central ball in lobby
     this.physics.reset();
@@ -746,10 +917,6 @@ export class GameManager {
 
   // --- TIKTOK LIVE EVENTS & BALANCING ---
   handleJoin(userData, requestedTeam) {
-    if (this.currentState !== CONFIG.STATES.LOBBY) {
-      // In-match joining: queue or place them directly if desired
-    }
-
     // Follower check
     if (!userData.isFollower) {
       this.showToast(`@${userData.nickname || userData.uniqueId}: Katılmak için Takip Etmelisin!`, '#FF3366');
@@ -766,15 +933,16 @@ export class GameManager {
     const blueCount = this.blueTeam.size;
     const totalPlayers = redCount + blueCount;
     let assignedTeam = requestedTeam.toUpperCase();
+    let wasBalanced = false;
 
     if (totalPlayers < CONFIG.BALANCE.MIN_PLAYERS_FOR_PERCENT_RULE) {
       // < 10 players: difference cannot exceed 1
       if (assignedTeam === 'RED' && redCount > blueCount) {
         assignedTeam = 'BLUE';
-        this.showToast(`Denge Kuralı: @${userData.nickname || userData.uniqueId} MAVİ takıma atandı!`, CONFIG.BLUE_ZONE.COLOR);
+        wasBalanced = true;
       } else if (assignedTeam === 'BLUE' && blueCount > redCount) {
         assignedTeam = 'RED';
-        this.showToast(`Denge Kuralı: @${userData.nickname || userData.uniqueId} KIRMIZI takıma atandı!`, CONFIG.RED_ZONE.COLOR);
+        wasBalanced = true;
       }
     } else {
       // >= 10 players: abs(red - blue) <= total * 0.10
@@ -786,9 +954,7 @@ export class GameManager {
       if (diff > futureTotal * CONFIG.BALANCE.MAX_PERCENT_DIFF) {
         // Overloaded team, flip to opposite team
         assignedTeam = (assignedTeam === 'RED') ? 'BLUE' : 'RED';
-        const teamLabel = (assignedTeam === 'RED') ? 'KIRMIZI' : 'MAVİ';
-        const teamColor = (assignedTeam === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
-        this.showToast(`Takım Dengelendi: @${userData.nickname || userData.uniqueId} -> ${teamLabel}`, teamColor);
+        wasBalanced = true;
       }
     }
 
@@ -823,20 +989,23 @@ export class GameManager {
       });
     }
 
+    // Dynamic Marquee Update: append nickname immediately into team's marquee stream
+    const nick = userData.nickname || userData.uniqueId;
+    this.arena.addPlayerToTicker(assignedTeam, nick);
+
+    // Instant Join Toast on their team's side (1.8s)
+    this.showJoinToast(assignedTeam, nick, wasBalanced);
+
     return avatar;
   }
 
   handleLike(userData, count = 1) {
     let player = this.allPlayers.get(userData.uniqueId);
     if (!player) {
-      // In Lobby, viewers MUST type 'kırmızı' or 'mavi' to join. Likes do not auto-join during lobby!
-      if (this.currentState === CONFIG.STATES.LOBBY) {
-        return;
-      }
-      const team = (this.redTeam.size <= this.blueTeam.size) ? 'RED' : 'BLUE';
-      player = this.handleJoin(userData, team);
+      // Unregistered viewer sending likes: prompt them to choose a team!
+      this.showUnregisteredHint();
+      return;
     }
-    if (!player) return;
 
     player.likeCount += count;
     player.points += count * 2;
@@ -877,7 +1046,7 @@ export class GameManager {
   handleComment(userData, commentText) {
     const text = (commentText || '').trim().toLowerCase();
 
-    // Joining check
+    // Joining check (works in LOBBY, ROSTER_SHOWCASE and ACTIVE MATCH!)
     if (CONFIG.COMMANDS.RED.some(c => text.includes(c))) {
       this.handleJoin(userData, 'RED');
       return;
@@ -889,7 +1058,11 @@ export class GameManager {
 
     // Active Match push impulse
     let player = this.allPlayers.get(userData.uniqueId);
-    if (!player) return;
+    if (!player) {
+      // Unregistered viewer commenting: prompt them to choose a team!
+      this.showUnregisteredHint();
+      return;
+    }
 
     player.commentCount += 1;
     player.points += 5;

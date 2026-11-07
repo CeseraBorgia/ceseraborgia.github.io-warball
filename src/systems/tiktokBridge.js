@@ -247,6 +247,7 @@ export class TikTokBridge {
           <button id="btn-like-blue" class="btn btn-blue">❤️ Mavi Like (B)</button>
           <button id="btn-comment-red" class="btn btn-red">💬 Kırmızı Yorum</button>
           <button id="btn-comment-blue" class="btn btn-blue">💬 Mavi Yorum</button>
+          <button id="btn-unreg-action" class="btn btn-gray" style="grid-column: span 2;">❓ Kayıtsız Like/Yorum (Hint)</button>
         </div>
         <div class="dev-section-title">GIFTS (ELMAS)</div>
         <div class="dev-grid">
@@ -254,6 +255,7 @@ export class TikTokBridge {
           <button id="btn-gift-heart" class="btn btn-gold">💖 Kalp (10💎)</button>
           <button id="btn-gift-car" class="btn btn-gold">🏎️ Araba (999💎)</button>
           <button id="btn-gift-galaxy" class="btn btn-gold">🌌 Galaksi (G)</button>
+          <button id="btn-unreg-gift" class="btn btn-gold" style="grid-column: span 2;">🎁 Kayıtsız Hediye (Mid-Match)</button>
         </div>
         <div class="dev-section-title">CONTROL</div>
         <div class="dev-grid">
@@ -305,6 +307,15 @@ export class TikTokBridge {
       this.simulateBlueAction();
     });
 
+    document.getElementById('btn-unreg-action').addEventListener('click', () => {
+      const u = {
+        uniqueId: `unreg_${Math.floor(Math.random() * 9000 + 1000)}`,
+        nickname: `İzleyici_${Math.floor(Math.random() * 900 + 100)}`,
+        isFollower: true
+      };
+      window.onTikTokLike({ ...u, likeCount: 1 });
+    });
+
     document.getElementById('btn-gift-rose').addEventListener('click', () => {
       const u = this.getSimulatedUser(true);
       window.onTikTokGift({ ...u, giftName: 'Gül', diamondCount: 1 });
@@ -318,6 +329,15 @@ export class TikTokBridge {
       window.onTikTokGift({ ...u, giftName: 'Spor Araba', diamondCount: 999 });
     });
     document.getElementById('btn-gift-galaxy').addEventListener('click', () => this.simulateHighValueGift());
+
+    document.getElementById('btn-unreg-gift').addEventListener('click', () => {
+      const u = {
+        uniqueId: `gifter_${Math.floor(Math.random() * 9000 + 1000)}`,
+        nickname: `MegaGifter_${Math.floor(Math.random() * 900 + 100)}`,
+        isFollower: true
+      };
+      window.onTikTokGift({ ...u, giftName: 'Galaksi', diamondCount: 19999 });
+    });
 
     document.getElementById('btn-next-state').addEventListener('click', () => this.gm.skipToNextState());
 
