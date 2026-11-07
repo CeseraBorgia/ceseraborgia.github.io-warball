@@ -239,6 +239,21 @@ export class Arena extends PIXI.Container {
     this.blueStatsText.text = `${blueCount} Savaşçı${blueQueueStr} | ${blueScore} Puan`;
   }
 
+  // Reset arena state between rounds
+  resetRound() {
+    this.activeBeams = [];
+    if (this.beamsGfx) this.beamsGfx.clear();
+    this.shakeIntensity = 0;
+    this.shakeTime = 0;
+    this.x = 0;
+    this.y = 0;
+    this.ballY = CONFIG.CORRIDOR.CENTER_Y;
+    this.ball.y = CONFIG.CORRIDOR.CENTER_Y;
+    this.pushRatio = 0.5;
+    this.ballText.text = '50%';
+    this.updateTeamStats(0, 0, 0, 0, 0, 0);
+  }
+
   // Fire an action-triggered laser beam or mega-beam to the ball (fades out in 0.4s or 0.9s)
   fireBeam(fromX, fromY, toX, toY, color, isMega = false, diamonds = 1) {
     this.activeBeams.push({

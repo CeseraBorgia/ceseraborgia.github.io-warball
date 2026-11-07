@@ -21,6 +21,9 @@ export class GameManager {
     this.redTeam = new Map(); // uniqueId -> Avatar
     this.blueTeam = new Map(); // uniqueId -> Avatar
     this.allPlayers = new Map(); // uniqueId -> Avatar
+    this.vipPlayers = [];
+    this.activeRoster = [];
+    this.queue = [];
 
     // Layer containers
     this.charactersLayer = new PIXI.Container();
@@ -192,24 +195,46 @@ export class GameManager {
     this.centerBanner.visible = true;
     this.promptText.visible = true;
     this.leaderboardOverlay.visible = false;
+    this.leaderboardOverlay.removeChildren();
     this.bannerTitle.text = 'LOBİ & KATILIM ZAMANI';
     this.bannerTitle.style.fill = '#00E5FF';
     this.bannerTitle.style.fontSize = 20;
     this.promptText.text = "Katılmak için 'kırmızı' veya 'mavi' yazın! (Sadece Takipçiler)";
 
-    this.physics.reset();
-    this.winnerTeam = null;
-    this.arena.ball.visible = false; // Hide ball in lobby
-
-    // Reset crowns, alpha & scale on all avatars
+    // 1. Wipe and destroy all existing player avatars completely (Zero carryover)
     this.allPlayers.forEach(av => {
-      av.setCrown(false);
-      av.alpha = 1;
-      gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.35 });
+      av.isVipGifter = false;
+      gsap.killTweensOf(av);
+      gsap.killTweensOf(av.scale);
+      av.destroy({ children: true });
     });
+    this.charactersLayer.removeChildren();
 
-    // Set all avatars to stadium formation in their team zones
-    this.repositionLobbyAvatars();
+    // 2. Clear all collections
+    this.redTeam.clear();
+    this.blueTeam.clear();
+    this.allPlayers.clear();
+    this.vipPlayers = [];
+    this.activeRoster = [];
+    this.queue = [];
+
+    // 3. Reset scores & round state
+    this.redScore = 0;
+    this.blueScore = 0;
+    this.winnerTeam = null;
+
+    // 4. Clear combat texts & reset arena effects
+    this.combatTextContainer.removeChildren();
+    if (this.arena.resetRound) {
+      this.arena.resetRound();
+    }
+
+    // 5. Reset physics & hide central ball in lobby
+    this.physics.reset();
+    this.arena.ball.visible = false;
+
+    // 6. Refresh HUD to show 0 warriors and 0 points
+    this.updateTeamStatsDisplay();
   }
 
   onEnterRosterShowcase() {
@@ -251,6 +276,11 @@ export class GameManager {
     this.centerBanner.visible = true;
     this.promptText.visible = false;
     this.leaderboardOverlay.visible = false;
+
+    // Intra-match VIP lock expires as soon as active match ends
+    this.allPlayers.forEach(p => {
+      p.isVipGifter = false;
+    });
 
     const winnerName = (this.winnerTeam === 'RED') ? 'KIRMIZI TAKIM' : 'MAVİ TAKIM';
     const winnerColor = (this.winnerTeam === 'RED') ? CONFIG.RED_ZONE.COLOR_HEX : CONFIG.BLUE_ZONE.COLOR_HEX;
@@ -328,29 +358,45 @@ export class GameManager {
     const allPlayers = Array.from(teamMap.values());
     if (allPlayers.length === 0) return;
 
+    const isMatchState = (this.currentState === CONFIG.STATES.MATCH);
+
     // 1. Separate Gifters and Regular (Likers/Commenters)
-    const gifters = allPlayers.filter(p => p.giftDiamonds > 0);
-    const regulars = allPlayers.filter(p => p.giftDiamonds === 0);
+    // VIP lock is active STRICTLY during State 3 (Active Match)
+    let vipGifters = [];
+    let overflowGifters = [];
+    let regulars = [];
 
-    // Sort gifters by diamond count + recency
-    gifters.sort((a, b) => {
-      const scoreA = (a.giftDiamonds * 1000) + (a.lastActiveTimestamp || 0);
-      const scoreB = (b.giftDiamonds * 1000) + (b.lastActiveTimestamp || 0);
-      return scoreB - scoreA;
-    });
+    if (isMatchState) {
+      const gifters = allPlayers.filter(p => p.giftDiamonds > 0);
+      regulars = allPlayers.filter(p => p.giftDiamonds === 0);
 
-    // 2. VIP Frontline Slots (Max 10 Reserved Slots in Frontline: slots 20 to 29)
-    // If <= 10 gifters, ALL of them are locked permanently in frontline
-    const vipGifters = gifters.slice(0, 10);
-    const overflowGifters = gifters.slice(10);
+      // Sort gifters by diamond count + recency
+      gifters.sort((a, b) => {
+        const scoreA = (a.giftDiamonds * 1000) + (a.lastActiveTimestamp || 0);
+        const scoreB = (b.giftDiamonds * 1000) + (b.lastActiveTimestamp || 0);
+        return scoreB - scoreA;
+      });
 
-    // 3. Candidates for remaining open slots (Slots 0-19, plus any unfilled frontline slots)
+      // VIP Frontline Slots (Max 10 Reserved Slots in Frontline: slots 20 to 29)
+      vipGifters = gifters.slice(0, 10);
+      overflowGifters = gifters.slice(10);
+    } else {
+      // Lobby / Showcase / Podium: All 60 on-screen slots are 100% open without frontline VIP locking
+      regulars = [...allPlayers];
+    }
+
+    // 2. Candidates for remaining open slots (Slots 0-19, plus any unfilled frontline slots)
     const openCandidates = [...overflowGifters, ...regulars];
     openCandidates.sort((a, b) => this.getPriorityScore(b) - this.getPriorityScore(a));
 
     const totalOpenSlots = 30 - vipGifters.length;
     const activeOpenPlayers = openCandidates.slice(0, totalOpenSlots);
     const queuedPlayers = openCandidates.slice(totalOpenSlots);
+
+    // Update tracking collections
+    this.vipPlayers = vipGifters;
+    this.activeRoster = [...vipGifters, ...activeOpenPlayers];
+    this.queue = queuedPlayers;
 
     // Hide queued off-screen supporters
     queuedPlayers.forEach(p => {
@@ -402,11 +448,13 @@ export class GameManager {
     if (player.visible && player.onStage) return;
 
     // Player is currently off-screen in queue!
-    // If player is a gifter, full re-sync gives them an immediate VIP frontline slot
-    if (player.giftDiamonds > 0) {
+    const isMatchState = (this.currentState === CONFIG.STATES.MATCH);
+
+    // If player is a gifter and we are in active match, full re-sync gives them an immediate VIP frontline slot
+    if (isMatchState && player.giftDiamonds > 0) {
       player.x = CONFIG.STAGE_WIDTH / 2;
       player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
-      this.syncTeamRoster(player.team, (this.currentState === CONFIG.STATES.MATCH) ? 'idle' : 'idle');
+      this.syncTeamRoster(player.team, 'idle');
       gsap.from(player, {
         y: isRed ? -80 : CONFIG.STAGE_HEIGHT + 80,
         alpha: 0,
@@ -421,7 +469,8 @@ export class GameManager {
     const teamMap = isRed ? this.redTeam : this.blueTeam;
     const onStageRegulars = Array.from(teamMap.values()).filter(p => p.onStage && !p.isVipGifter);
 
-    const maxRegularSlots = 30 - Math.min(10, Array.from(teamMap.values()).filter(p => p.giftDiamonds > 0).length);
+    const vipCount = isMatchState ? Math.min(10, Array.from(teamMap.values()).filter(p => p.giftDiamonds > 0).length) : 0;
+    const maxRegularSlots = 30 - vipCount;
     if (onStageRegulars.length >= maxRegularSlots) {
       onStageRegulars.sort((a, b) => this.getPriorityScore(a) - this.getPriorityScore(b));
       const benched = onStageRegulars[0];
@@ -780,6 +829,10 @@ export class GameManager {
   handleLike(userData, count = 1) {
     let player = this.allPlayers.get(userData.uniqueId);
     if (!player) {
+      // In Lobby, viewers MUST type 'kırmızı' or 'mavi' to join. Likes do not auto-join during lobby!
+      if (this.currentState === CONFIG.STATES.LOBBY) {
+        return;
+      }
       const team = (this.redTeam.size <= this.blueTeam.size) ? 'RED' : 'BLUE';
       player = this.handleJoin(userData, team);
     }
