@@ -62,25 +62,34 @@ export const CONFIG = {
     LEADERBOARD: 10,
   },
 
-  // Physics & Tug-of-War Tuning
+  // Physics & Tug-of-War Tuning - Aggressive Push & Knockout Balance
   PHYSICS: {
-    // Screen height is 1920px. 5% screen distance per second terminal velocity:
-    // 1920 * 0.05 = 96px/s. At 60 FPS that is 1.6 px/frame.
-    MAX_SPEED_PER_SEC: 96,
+    // Screen height is 1920px. 12% screen distance per second terminal velocity:
+    // 1920 * 0.12 = 230.4 px/s. At 60 FPS that is ~3.84 px/frame.
+    MAX_SPEED_PER_SEC: 230.4,
     DAMPING: 0.94, // Velocity friction per tick
 
     // Impulses in screen percentage (1920 * percent)
-    // 0.15% = 2.88px impulse
-    COMMENT_IMPULSE_PERCENT: 0.0015,
-    LIKE_IMPULSE_PERCENT: 0.0015,
+    // Comment: +0.45% (8.64px impulse)
+    COMMENT_IMPULSE_PERCENT: 0.0045,
+    // Like: +0.35% (6.72px impulse)
+    LIKE_IMPULSE_PERCENT: 0.0035,
 
-    // Gift impulse range: 1.5% to 3.5% (28.8px to 67.2px impulse)
-    GIFT_MIN_IMPULSE_PERCENT: 0.015,
-    GIFT_MAX_IMPULSE_PERCENT: 0.035,
+    // Gift impulse range: 3.0% to 8.5% (57.6px to 163.2px impulse)
+    GIFT_MIN_IMPULSE_PERCENT: 0.030,
+    GIFT_MAX_IMPULSE_PERCENT: 0.085,
 
-    // Win Boundaries
-    RED_GOAL_Y: 384,   // If ball reaches here, Blue wins
-    BLUE_GOAL_Y: 1536, // If ball reaches here, Red wins
+    // Tighter Win Boundaries (25% and 75% screen lines)
+    RED_GOAL_Y: 480,   // If ball reaches Y <= 480, Blue wins
+    BLUE_GOAL_Y: 1440, // If ball reaches Y >= 1440, Red wins
+  },
+
+  // Roster Capacity & Formation Layout (30 per team, 60 total on screen)
+  ROSTER: {
+    MAX_STAGE_PER_TEAM: 30,
+    ROWS: 3,
+    COLS: 10,
+    MAX_VIP_GIFTERS: 10, // 10 frontline slots reserved for gifters
   },
 
   // Team Balancing Rules

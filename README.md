@@ -26,52 +26,57 @@ Her katılan izleyici, şık ve fütüristik Lunar Rave / Siberpunk sokak stili 
 
 ---
 
-## 🏟️ 2. Arena Yerleşimi (1080 x 1920)
+## 🏟️ 2. Arena Yerleşimi & 30v30 Stadyum Düzeni (1080 x 1920)
 
-- **Üst %20 [0 - 384px]:** Kırmızı Takım Sahnesi & Kale Çizgisi (`#FF0055`). Kırmızı karakterler aşağıya doğru dizilir.
-- **Orta %60 [384 - 1536px]:** Sıfır Yerçekimi Savaş Koridoru (`#0D0B18`). Perspektif ızgara zemin, sınır lazer bariyerleri ve devasa plazma Enerji Topu (The Ball).
-- **Alt %20 [1536 - 1920px]:** Mavi Takım Sahnesi & Kale Çizgisi (`#00E5FF`). Mavi karakterler yukarıya doğru dizilir.
+- **Üst Bölge (Kırmızı Takım, 3 Sıra x 10 = 30 Savaşçı):**
+  * Sıra 1 (Arka Sıra): Y ≈ 170px
+  * Sıra 2 (Orta Sıra): Y ≈ 250px
+  * Sıra 3 (Ön Hat / VIP Hediye Alanı): Y ≈ 330px
+- **Orta Koridor (Sıfır Yerçekimi Savaş Alanı):**
+  * Kırmızı Kale Sınırı: **Y = 480px** (%25 çizgisi)
+  * Tarafsız Merkez: **Y = 960px** (%50 çizgisi)
+  * Mavi Kale Sınırı: **Y = 1440px** (%75 çizgisi)
+  * Devasa plazma Enerji Topu ve yönlü şok dalgası halkaları.
+- **Alt Bölge (Mavi Takım, 3 Sıra x 10 = 30 Savaşçı):**
+  * Sıra 3 (Ön Hat / VIP Hediye Alanı): Y ≈ 1580px
+  * Sıra 2 (Orta Sıra): Y ≈ 1660px
+  * Sıra 1 (Arka Sıra): Y ≈ 1740px
 
 ---
 
-## 🔄 3. Oyun Döngüsü & Durum Makinesi (5 Aşama)
+## 🔄 3. Oyun Döngüsü & Dinamik Kadro Sistemi
 
 1. **Aşama 1: Lobi & Katılım (30 Saniye)**
-   - Ekranda geri sayım sayacı çalışır.
-   - Sadece takipçiler yoruma **"kırmızı"** veya **"mavi"** yazarak katılabilir.
-   - **%10 Otomatik Takım Dengesi:**
-     * 10 oyuncudan azken: İki takım arasındaki fark en fazla 1 olabilir.
-     * 10 oyuncu ve üzerindeyken: `|Kırmızı - Mavi| <= Toplam * 0.10`.
-     * Bir takım aşırı yüklendiğinde, oyuncu otomatik olarak diğer takıma atanır ve ekranda bildirim afişi çıkar.
-   - Katılan karakter gökyüzünden elastik bir sekme (`bounce.out`) ile sahneye iner.
+   - Ekranda geri sayım sayacı çalışır. Takipçiler yoruma **"kırmızı"** veya **"mavi"** yazarak katılır.
+   - **%10 Otomatik Takım Dengesi:** Eşitliği korumak için aşırı yüklenen takımdan diğerine otomatik transfer.
 
 2. **Aşama 2: Kadro Tanıtımı (10 Saniye)**
-   - Ekran ikiye bölünür. Kırmızı ve Mavi takımlar stadyum ızgarasında düzenli sıralanır.
-   - Parlayan isimlikler ve savaş anonsu görünür.
+   - Ekran ikiye bölünür, takımlar 30'ar kişilik disiplinli stadyum ızgarasında düzenlenir.
 
-3. **Aşama 3: Halat Çekme Savaşı / Tug-of-War (Maks. 60 Saniye)**
+3. **Aşama 3: Halat Çekme Savaşı / Agresif Tug-of-War (Maks. 60 Saniye)**
    - Devasa enerji topu tam ortada (Y = 960px) belirir.
-   - Oyuncular kale çizgisine dizilip enerji ışınlarıyla topu iter:
-     * **Yorum:** Karşı taraf yönüne **+%0.15** itme darbesi.
-     * **Beğeni (Like):** Karşı taraf yönüne **+%0.15** itme darbesi.
-     * **Hediye (Elmas):** Elmas değerine göre **+%1.5 ile +%3.5** arası dev darbe. Hediye atan oyuncu 1.5x büyür!
-   - **Fizik:** Hız sönümleme (damping: 0.94) ve maksimum terminal hız saniyede en fazla %5 ekran mesafesi (96 px/saniye) ile ani bitişler önlenir.
-   - **Kazanma Şartları:**
-     * Top Y <= 384px (Kırmızı Kalesi) noktasına ulaşırsa: **MAVİ TAKIM KAZANIR!**
-     * Top Y >= 1536px (Mavi Kalesi) noktasına ulaşırsa: **KIRMIZI TAKIM KAZANIR!**
-     * 60 saniye dolarsa: Topu kendi kalesinden en uzağa iten takım kazanır.
+   - **Dinamik Kadro Önceliği (Gifter VIP + Rotasyon):**
+     * **10 Kalıcı VIP Yuvası (Ön Hat):** Hediye gönderen oyuncular kalıcı VIP statüsü kazanır ve ön hatta kilitlenir. Asla beğeni/yorumla yedek sırasına düşürülmezler!
+     * **20 Açık Yuva:** Beğeni ve yorum atanlar arasından `(Puan * 0.4) + (Yenilik Skoru * 0.6)` formülüyle en aktif oyuncular sahada tutulur. Kuyruktaki herhangi biri etkileşime girdiğinde en pasif oyuncunun yerine anında sahneye fırlar!
+   - **Agresif İtme Ayarları (Erken Nakavt Dengesi):**
+     * **Yorum:** Karşı taraf yönüne **+%0.45** itme darbesi.
+     * **Beğeni (Like):** Karşı taraf yönüne **+%0.35** itme darbesi.
+     * **Hediye (Elmas):** Elmas değerine göre **+%3.0 ile +%8.5** arası dev darbe. Hediye atan oyuncu 1.5x büyür, kalın mega-ışın ve ekran sarsıntısı tetiklenir!
+     * **Terminal Hız:** Saniyede maksimum **%12** (230 px/sn) ekran mesafesi.
+   - **Kazanma Şartları (Daraltılmış Sınırlar):**
+     * Top Y <= 480px (Kırmızı Kalesi): **MAVİ TAKIM KAZANIR!**
+     * Top Y >= 1440px (Mavi Kalesi): **KIRMIZI TAKIM KAZANIR!**
+     * 60 saniye dolarsa: Topu rakip yarı sahaya daha çok iten takım kazanır.
 
 4. **Aşama 4: Zafer Podyumu & Kutlama (15 Saniye)**
-   - Kazanan takımın renginde konfeti, havai fişekler ve lazer ışıkları patlar.
-   - **Orta Podyum:** Kazanan takımın en çok hediye gönderen **İlk 3 Oyuncusu** altın taçlarıyla dev ölçekte zıplar.
-   - **Yan Kademeler:** En çok beğeni/yorum atan ilk 5 oyuncu basamaklarda yer alır.
-   - **Kaybeden Takım:** Köşelerde çöküş ve yenilgi animasyonu ile bekler.
+   - Sinematik dev kazanan anonsu ("★ KIRMIZI TAKIM ZAFERİ! ★").
+   - **İlk 3 Hediye Şampiyonu:** Sahne ortasında **2.2x - 2.45x** dev ölçekte, başlarında parlayan **Kraliyet Taçları** (Altın, Gümüş, Bronz) ile zıplar.
+   - **İlk 4 - 10 MVP'ler:** Yan podyum kanatlarında **1.65x** ölçekte sergilenir.
+   - **Kazanan Takımın Kalanı:** Arka kademelerde minimum **1.40x** ölçekte çift neon glowstick sallayarak kutlama yapar.
+   - **Kaybeden Takım:** Köşelerde karartılmış (alpha: 0.35, scale: 0.75x) yenilgi duruşu sergiler.
 
 5. **Aşama 5: MVP Liderlik Tablosu (10 Saniye)**
-   - Yan yana iki neon siber kart:
-     * Kazanan Takımın En İyi 5 Katkı Sağlayıcısı (Karakter, Kullanıcı Adı, Puan, İstatistikler)
-     * Kaybeden Takımın En İyi 5 Katkı Sağlayıcısı
-   - 10 saniye sonra oyun otomatik olarak sıfırlanır ve Aşama 1'e (Lobi) döner.
+   - Kazanan ve kaybeden takımın ilk 5 oyuncusunun istatistik tablosu gösterilir ve oyun yeni tura sıfırlanır.
 
 ---
 

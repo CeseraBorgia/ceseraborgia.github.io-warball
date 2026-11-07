@@ -239,7 +239,7 @@ export class TikTokBridge {
           <button id="btn-join-red" class="btn btn-red">+ Kırmızı Katıl</button>
           <button id="btn-join-blue" class="btn btn-blue">+ Mavi Katıl</button>
           <button id="btn-join-nonfollower" class="btn btn-gray">+ Takipçi Olmayan</button>
-          <button id="btn-fill-teams" class="btn btn-purple">+ 10 Oyuncu Doldur</button>
+          <button id="btn-fill-teams" class="btn btn-purple">+ 60 Oyuncu (30v30)</button>
         </div>
         <div class="dev-section-title">INTERACTIONS</div>
         <div class="dev-grid">
@@ -287,7 +287,7 @@ export class TikTokBridge {
     });
 
     document.getElementById('btn-fill-teams').addEventListener('click', () => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 30; i++) {
         const u1 = this.getSimulatedUser(true);
         window.onTikTokComment({ ...u1, comment: 'kırmızı' });
         const u2 = this.getSimulatedUser(true);

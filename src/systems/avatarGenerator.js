@@ -96,22 +96,25 @@ export class Avatar extends PIXI.Container {
     this.bodyContainer = new PIXI.Container();
     this.auraContainer = new PIXI.Container();
     this.nametagContainer = new PIXI.Container();
+    this.crownGfx = new PIXI.Graphics();
 
     this.addChild(this.shadowGraphics);
     this.addChild(this.auraContainer);
     this.addChild(this.bodyContainer);
     this.addChild(this.nametagContainer);
+    this.bodyContainer.addChild(this.crownGfx);
 
     // Build parts
     this.generateVisuals();
     this.createNametag();
 
-    // Default scale - Increased to 1.45 (1.7x+ larger for mobile/OBS stream visibility)
-    this.baseScale = 1.45;
+    // Default scale - Set to 1.10 (Optimized for 10 players per row across 1080px width)
+    this.baseScale = 1.10;
     this.scale.set(this.baseScale);
     this.pushTimeout = null;
     this.lastActiveTimestamp = Date.now();
     this.onStage = true;
+    this.isVipGifter = false;
   }
 
   generateVisuals() {
@@ -639,49 +642,99 @@ export class Avatar extends PIXI.Container {
     this.nametagContainer.removeChildren();
 
     const nameText = this.userData.nickname || this.userData.uniqueId || 'Warrior';
-    const displayName = (nameText.length > 12) ? nameText.substring(0, 10) + '..' : nameText;
+    const displayName = (nameText.length > 9) ? nameText.substring(0, 8) + '..' : nameText;
 
     const accentColor = (this.team === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
     const accentHex = (this.team === 'RED') ? CONFIG.RED_ZONE.COLOR_HEX : CONFIG.BLUE_ZONE.COLOR_HEX;
 
     const label = new PIXI.Text(displayName, {
       fontFamily: 'Montserrat, Rajdhani, "Segoe UI", sans-serif',
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: '800',
       fill: '#FFFFFF',
-      letterSpacing: 0.5,
+      letterSpacing: 0.2,
       dropShadow: true,
       dropShadowColor: accentHex,
       dropShadowDistance: 0,
-      dropShadowBlur: 4,
+      dropShadowBlur: 3,
     });
     label.anchor.set(0.5);
 
-    const padX = 10;
-    const padY = 5;
-    const tagW = Math.max(68, label.width + padX * 2);
-    const tagH = 22;
+    const padX = 7;
+    const tagW = Math.min(78, Math.max(50, label.width + padX * 2));
+    const tagH = 18;
 
     const bg = new PIXI.Graphics();
     // Dark cyber pill background
-    bg.beginFill(0x0A0814, 0.88);
+    bg.beginFill(0x0A0814, 0.90);
     bg.lineStyle(1.5, accentColor, 0.95);
-    bg.drawRoundedRect(-tagW / 2, -tagH / 2, tagW, tagH, 6);
+    bg.drawRoundedRect(-tagW / 2, -tagH / 2, tagW, tagH, 5);
     bg.endFill();
 
-    // If verified follower, draw a glowing badge dot
+    // If verified follower, draw glowing dot
     if (this.userData.isFollower) {
       bg.lineStyle(0);
-      bg.beginFill(0x39FF14, 1); // Neon follower green dot
-      bg.drawCircle(-tagW / 2 + 6, 0, 3);
+      bg.beginFill(0x39FF14, 1);
+      bg.drawCircle(-tagW / 2 + 5, 0, 2.5);
       bg.endFill();
     }
 
     this.nametagContainer.addChild(bg);
     this.nametagContainer.addChild(label);
 
-    // Place nametag above head
-    this.nametagContainer.y = -68;
+    // Default nametag Y position
+    this.nametagContainer.y = -64;
+  }
+
+  // Golden / Neon Crown for Top Gifters on Victory Podium
+  setCrown(visible = true, rank = 1) {
+    this.crownGfx.clear();
+    if (!visible) {
+      this.nametagContainer.y = -64;
+      return;
+    }
+
+    // Move nametag higher to make room for crown
+    this.nametagContainer.y = -84;
+
+    const g = this.crownGfx;
+    const crownColor = (rank === 1) ? 0xFFD700 : (rank === 2 ? 0xE0E0E0 : 0xCD7F32);
+    const glowLine = (rank === 1) ? 0xFFFF77 : 0xFFFFFF;
+
+    // Glowing Crown Base & Spires
+    g.lineStyle(2, glowLine, 1);
+    g.beginFill(crownColor, 0.95);
+    // Draw 3-point jagged royal crown
+    g.drawPolygon([
+      -18, -48,
+      -22, -64,
+      -9, -54,
+      0, -70,
+      9, -54,
+      22, -64,
+      18, -48
+    ]);
+    g.endFill();
+
+    // Crown Base Band
+    g.lineStyle(1.5, 0x111119, 0.8);
+    g.beginFill(0x221100, 0.6);
+    g.drawRoundedRect(-17, -50, 34, 4.5, 2);
+    g.endFill();
+
+    // Glowing Jewels on spire tips (Ruby, Emerald, Sapphire)
+    g.lineStyle(0);
+    g.beginFill(0xFF0055); // Left Ruby
+    g.drawCircle(-22, -64, 2.5);
+    g.endFill();
+
+    g.beginFill(0x00E5FF); // Center Giant Jewel
+    g.drawCircle(0, -70, 3.5);
+    g.endFill();
+
+    g.beginFill(0x39FF14); // Right Emerald
+    g.drawCircle(22, -64, 2.5);
+    g.endFill();
   }
 
   setState(newState) {

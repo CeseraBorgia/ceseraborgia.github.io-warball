@@ -211,24 +211,24 @@ export class Arena extends PIXI.Container {
     g.clear();
 
     // 50% Center Zero-Gravity Line
-    g.lineStyle(2, 0xFFFFFF, 0.35);
+    g.lineStyle(2, 0xFFFFFF, 0.4);
     for (let x = 70; x < CONFIG.STAGE_WIDTH - 70; x += 30) {
       g.moveTo(x, 960);
       g.lineTo(x + 16, 960);
     }
 
-    // 25% Line (Closer to Red)
-    g.lineStyle(1.5, CONFIG.RED_ZONE.COLOR, 0.4);
+    // 25% Goal Boundary Line (Red Goal Y=480)
+    g.lineStyle(1.5, CONFIG.RED_ZONE.COLOR, 0.45);
     for (let x = 90; x < CONFIG.STAGE_WIDTH - 90; x += 40) {
-      g.moveTo(x, 672);
-      g.lineTo(x + 20, 672);
+      g.moveTo(x, CONFIG.PHYSICS.RED_GOAL_Y);
+      g.lineTo(x + 20, CONFIG.PHYSICS.RED_GOAL_Y);
     }
 
-    // 75% Line (Closer to Blue)
-    g.lineStyle(1.5, CONFIG.BLUE_ZONE.COLOR, 0.4);
+    // 75% Goal Boundary Line (Blue Goal Y=1440)
+    g.lineStyle(1.5, CONFIG.BLUE_ZONE.COLOR, 0.45);
     for (let x = 90; x < CONFIG.STAGE_WIDTH - 90; x += 40) {
-      g.moveTo(x, 1248);
-      g.lineTo(x + 20, 1248);
+      g.moveTo(x, CONFIG.PHYSICS.BLUE_GOAL_Y);
+      g.lineTo(x + 20, CONFIG.PHYSICS.BLUE_GOAL_Y);
     }
   }
 
@@ -332,9 +332,9 @@ export class Arena extends PIXI.Container {
       this.y = 0;
     }
 
-    // Calculate progression percentage (0% = Red Goal at 384, 100% = Blue Goal at 1536)
-    const range = CONFIG.CORRIDOR.BOTTOM - CONFIG.CORRIDOR.TOP;
-    this.pushRatio = Math.max(0, Math.min(1, (ballY - CONFIG.CORRIDOR.TOP) / range));
+    // Calculate progression percentage (0% = Red Goal at 480, 100% = Blue Goal at 1440)
+    const range = CONFIG.PHYSICS.BLUE_GOAL_Y - CONFIG.PHYSICS.RED_GOAL_Y;
+    this.pushRatio = Math.max(0, Math.min(1, (ballY - CONFIG.PHYSICS.RED_GOAL_Y) / range));
     const percentInt = Math.round(this.pushRatio * 100);
     this.ballText.text = `${percentInt}%`;
 
@@ -347,43 +347,43 @@ export class Arena extends PIXI.Container {
     const numVerts = 14;
     for (let i = 0; i <= numVerts; i++) {
       const x = 50 + (i / numVerts) * (CONFIG.STAGE_WIDTH - 100);
-      grid.moveTo(x, CONFIG.CORRIDOR.TOP);
-      grid.lineTo(x, CONFIG.CORRIDOR.BOTTOM);
+      grid.moveTo(x, CONFIG.PHYSICS.RED_GOAL_Y);
+      grid.lineTo(x, CONFIG.PHYSICS.BLUE_GOAL_Y);
     }
 
     // Horizontal moving scanlines
     const offset = (this.animTime * 25) % 40;
-    for (let y = CONFIG.CORRIDOR.TOP + offset; y <= CONFIG.CORRIDOR.BOTTOM; y += 40) {
+    for (let y = CONFIG.PHYSICS.RED_GOAL_Y + offset; y <= CONFIG.PHYSICS.BLUE_GOAL_Y; y += 40) {
       grid.moveTo(50, y);
       grid.lineTo(CONFIG.STAGE_WIDTH - 50, y);
     }
 
-    // 2. Animate Goal Hazard Lines
+    // 2. Animate Tighter Goal Hazard Lines (Red Y=480, Blue Y=1440)
     const gl = this.goalLinesGfx;
     gl.clear();
     const pulseRed = 0.6 + Math.sin(this.animTime * 4) * 0.35;
     const pulseBlue = 0.6 + Math.cos(this.animTime * 4) * 0.35;
 
-    // Red Goal Line (Y=384)
+    // Red Goal Line (Y=480)
     gl.lineStyle(5, CONFIG.RED_ZONE.COLOR, pulseRed);
-    gl.moveTo(45, CONFIG.RED_ZONE.BOTTOM);
-    gl.lineTo(CONFIG.STAGE_WIDTH - 45, CONFIG.RED_ZONE.BOTTOM);
+    gl.moveTo(45, CONFIG.PHYSICS.RED_GOAL_Y);
+    gl.lineTo(CONFIG.STAGE_WIDTH - 45, CONFIG.PHYSICS.RED_GOAL_Y);
     // Hazard dashes
     gl.lineStyle(2, 0xFFFFFF, pulseRed);
     for (let x = 60; x < CONFIG.STAGE_WIDTH - 60; x += 40) {
-      gl.moveTo(x, CONFIG.RED_ZONE.BOTTOM - 6);
-      gl.lineTo(x + 15, CONFIG.RED_ZONE.BOTTOM + 6);
+      gl.moveTo(x, CONFIG.PHYSICS.RED_GOAL_Y - 6);
+      gl.lineTo(x + 15, CONFIG.PHYSICS.RED_GOAL_Y + 6);
     }
 
-    // Blue Goal Line (Y=1536)
+    // Blue Goal Line (Y=1440)
     gl.lineStyle(5, CONFIG.BLUE_ZONE.COLOR, pulseBlue);
-    gl.moveTo(45, CONFIG.BLUE_ZONE.TOP);
-    gl.lineTo(CONFIG.STAGE_WIDTH - 45, CONFIG.BLUE_ZONE.TOP);
+    gl.moveTo(45, CONFIG.PHYSICS.BLUE_GOAL_Y);
+    gl.lineTo(CONFIG.STAGE_WIDTH - 45, CONFIG.PHYSICS.BLUE_GOAL_Y);
     // Hazard dashes
     gl.lineStyle(2, 0xFFFFFF, pulseBlue);
     for (let x = 60; x < CONFIG.STAGE_WIDTH - 60; x += 40) {
-      gl.moveTo(x, CONFIG.BLUE_ZONE.TOP - 6);
-      gl.lineTo(x + 15, CONFIG.BLUE_ZONE.TOP + 6);
+      gl.moveTo(x, CONFIG.PHYSICS.BLUE_GOAL_Y - 6);
+      gl.lineTo(x + 15, CONFIG.PHYSICS.BLUE_GOAL_Y + 6);
     }
 
     // 3. Render Multi-layered Energy Orb & Directional Pulses

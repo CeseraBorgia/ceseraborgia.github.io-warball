@@ -49,15 +49,15 @@ export class GameManager {
   }
 
   buildHUD() {
-    // 1. Center Banner / Countdown Display - Pinned at Y=445 (Just below Red boundary, zero overlap with ball)
+    // 1. Center Banner / Countdown Display - Pinned at Y=415 (Between Red Row 3 and Red Goal Y=480, zero overlap with ball)
     this.centerBanner = new PIXI.Container();
     this.centerBanner.x = CONFIG.STAGE_WIDTH / 2;
-    this.centerBanner.y = 445;
+    this.centerBanner.y = 415;
 
     const bannerBg = new PIXI.Graphics();
     bannerBg.beginFill(0x0A0814, 0.92);
     bannerBg.lineStyle(2, 0xBD00FF, 1);
-    bannerBg.drawRoundedRect(-240, -36, 480, 72, 16);
+    bannerBg.drawRoundedRect(-240, -32, 480, 64, 16);
     bannerBg.endFill();
 
     this.bannerTitle = new PIXI.Text('LOBİ & KATILIM ZAMANI', {
@@ -84,7 +84,7 @@ export class GameManager {
     this.centerBanner.addChild(this.bannerSubText);
     this.hudLayer.addChild(this.centerBanner);
 
-    // 2. Joining Prompt Marquee - Placed at Y=1480 (Just above Blue boundary, corridor stays clear)
+    // 2. Joining Prompt Marquee - Placed at Y=1500 (Just above Blue frontline Y=1580, corridor stays clear)
     this.promptText = new PIXI.Text("Katılmak için 'kırmızı' veya 'mavi' yazın! (Sadece Takipçiler)", {
       fontFamily: 'Rajdhani, sans-serif',
       fontSize: 18,
@@ -96,13 +96,13 @@ export class GameManager {
     });
     this.promptText.anchor.set(0.5);
     this.promptText.x = CONFIG.STAGE_WIDTH / 2;
-    this.promptText.y = 1480;
+    this.promptText.y = 1500;
     this.hudLayer.addChild(this.promptText);
 
-    // 3. Notification Toast Banner - Floats at Y=530 below banner
+    // 3. Notification Toast Banner - Floats at Y=515
     this.toastContainer = new PIXI.Container();
     this.toastContainer.x = CONFIG.STAGE_WIDTH / 2;
-    this.toastContainer.y = 530;
+    this.toastContainer.y = 515;
     this.toastContainer.alpha = 0;
 
     const toastBg = new PIXI.Graphics();
@@ -194,13 +194,21 @@ export class GameManager {
     this.leaderboardOverlay.visible = false;
     this.bannerTitle.text = 'LOBİ & KATILIM ZAMANI';
     this.bannerTitle.style.fill = '#00E5FF';
+    this.bannerTitle.style.fontSize = 20;
     this.promptText.text = "Katılmak için 'kırmızı' veya 'mavi' yazın! (Sadece Takipçiler)";
 
     this.physics.reset();
     this.winnerTeam = null;
     this.arena.ball.visible = false; // Hide ball in lobby
 
-    // Set all avatars to idle in their team zones
+    // Reset crowns, alpha & scale on all avatars
+    this.allPlayers.forEach(av => {
+      av.setCrown(false);
+      av.alpha = 1;
+      gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.35 });
+    });
+
+    // Set all avatars to stadium formation in their team zones
     this.repositionLobbyAvatars();
   }
 
@@ -211,6 +219,7 @@ export class GameManager {
     this.leaderboardOverlay.visible = false;
     this.bannerTitle.text = 'TAKIMLAR BELİRLENDİ!';
     this.bannerTitle.style.fill = '#FFD700';
+    this.bannerTitle.style.fontSize = 20;
     this.promptText.text = `${this.redTeam.size} KIRMIZI  VS  ${this.blueTeam.size} MAVİ - SAVAŞ BAŞLIYOR!`;
 
     this.arena.ball.visible = true;
@@ -227,11 +236,12 @@ export class GameManager {
     this.leaderboardOverlay.visible = false;
     this.bannerTitle.text = 'TUG-OF-WAR SAVAŞI';
     this.bannerTitle.style.fill = '#FF0055';
+    this.bannerTitle.style.fontSize = 20;
 
     this.physics.startMatch();
     this.arena.ball.visible = true;
 
-    // Set all avatars to pushing posture at boundary line
+    // Set all avatars in stadium formation
     this.repositionMatchAvatars();
   }
 
@@ -244,8 +254,15 @@ export class GameManager {
 
     const winnerName = (this.winnerTeam === 'RED') ? 'KIRMIZI TAKIM' : 'MAVİ TAKIM';
     const winnerColor = (this.winnerTeam === 'RED') ? CONFIG.RED_ZONE.COLOR_HEX : CONFIG.BLUE_ZONE.COLOR_HEX;
-    this.bannerTitle.text = `${winnerName} KAZANDI!`;
+    
+    // Huge, punchy, cinematic victory announcement
+    this.bannerTitle.text = `★ ${winnerName} KAZANDI! ★`;
     this.bannerTitle.style.fill = winnerColor;
+    this.bannerTitle.style.fontSize = 26;
+    this.bannerSubText.text = 'ZAFER KUTLAMASI';
+    this.bannerSubText.style.fill = '#FFD700';
+
+    gsap.fromTo(this.centerBanner.scale, { x: 0.7, y: 0.7 }, { x: 1, y: 1, duration: 0.5, ease: 'back.out(2)' });
 
     this.physics.stopMatch();
 
@@ -253,7 +270,7 @@ export class GameManager {
     this.particles.spawnConfetti(CONFIG.STAGE_WIDTH / 2, CONFIG.CORRIDOR.CENTER_Y, [
       (this.winnerTeam === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR,
       0xFFD700, 0xFFFFFF
-    ], 120);
+    ], 160);
 
     // Setup celebration podium
     this.setupVictoryPodium();
@@ -267,219 +284,268 @@ export class GameManager {
     this.buildLeaderboardView();
   }
 
-  // --- REPOSITIONING & ROSTER MANAGEMENT HELPERS ---
-  updateTeamStatsDisplay() {
-    const redTotal = this.redTeam.size;
-    const blueTotal = this.blueTeam.size;
-    const redActive = Math.min(14, redTotal);
-    const blueActive = Math.min(14, blueTotal);
-    const redQueue = Math.max(0, redTotal - 14);
-    const blueQueue = Math.max(0, blueTotal - 14);
+  // --- 30 PLAYERS GRID FORMATION & VIP PRIORITY ROTATION ---
 
-    this.arena.updateTeamStats(redActive, this.redScore, blueActive, this.blueScore, redQueue, blueQueue);
+  // Calculate stadium formation slot coordinates (3 rows of 10)
+  getSlotCoords(team, slotIndex) {
+    const isRed = (team === 'RED');
+    // slotIndex 0-9: Row 0 (Back row)
+    // slotIndex 10-19: Row 1 (Middle row)
+    // slotIndex 20-29: Row 2 (Frontline VIP row near goal)
+    const row = Math.floor(slotIndex / 10); // 0, 1, 2
+    const col = slotIndex % 10; // 0-9
+
+    const startX = 65;
+    const spacingX = (CONFIG.STAGE_WIDTH - 130) / 9; // ~105.55px across 1080px
+    const x = startX + col * spacingX;
+
+    let y;
+    if (isRed) {
+      if (row === 0) y = 170;      // Row 1 (Back Row)
+      else if (row === 1) y = 250; // Row 2 (Middle Row)
+      else y = 330;                // Row 3 (Frontline VIP Row near goal Y=480)
+    } else {
+      if (row === 0) y = 1740;     // Row 1 (Back Row)
+      else if (row === 1) y = 1660;// Row 2 (Middle Row)
+      else y = 1580;               // Row 3 (Frontline VIP Row near goal Y=1440)
+    }
+
+    return { x, y, isFrontline: (row === 2) };
   }
 
-  // Ensure active interacting players are promoted to the frontline if in queue
+  // Calculate dynamic rotation priority: score = (contributionScore * 0.4) + (recencyDecay * 0.6)
+  getPriorityScore(player) {
+    const now = Date.now();
+    const elapsedSec = Math.max(0, (now - (player.lastActiveTimestamp || 0)) / 1000);
+    const recencyScore = Math.max(0, 5000 - elapsedSec * 30);
+    return (player.points * 0.4) + (recencyScore * 0.6);
+  }
+
+  // Synchronize 30 on-stage slots with VIP gifter locks & dynamic queue rotation
+  syncTeamRoster(teamName, targetState = 'idle') {
+    const isRed = (teamName === 'RED');
+    const teamMap = isRed ? this.redTeam : this.blueTeam;
+    const allPlayers = Array.from(teamMap.values());
+    if (allPlayers.length === 0) return;
+
+    // 1. Separate Gifters and Regular (Likers/Commenters)
+    const gifters = allPlayers.filter(p => p.giftDiamonds > 0);
+    const regulars = allPlayers.filter(p => p.giftDiamonds === 0);
+
+    // Sort gifters by diamond count + recency
+    gifters.sort((a, b) => {
+      const scoreA = (a.giftDiamonds * 1000) + (a.lastActiveTimestamp || 0);
+      const scoreB = (b.giftDiamonds * 1000) + (b.lastActiveTimestamp || 0);
+      return scoreB - scoreA;
+    });
+
+    // 2. VIP Frontline Slots (Max 10 Reserved Slots in Frontline: slots 20 to 29)
+    // If <= 10 gifters, ALL of them are locked permanently in frontline
+    const vipGifters = gifters.slice(0, 10);
+    const overflowGifters = gifters.slice(10);
+
+    // 3. Candidates for remaining open slots (Slots 0-19, plus any unfilled frontline slots)
+    const openCandidates = [...overflowGifters, ...regulars];
+    openCandidates.sort((a, b) => this.getPriorityScore(b) - this.getPriorityScore(a));
+
+    const totalOpenSlots = 30 - vipGifters.length;
+    const activeOpenPlayers = openCandidates.slice(0, totalOpenSlots);
+    const queuedPlayers = openCandidates.slice(totalOpenSlots);
+
+    // Hide queued off-screen supporters
+    queuedPlayers.forEach(p => {
+      p.visible = false;
+      p.onStage = false;
+      p.isVipGifter = false;
+    });
+
+    // Place VIP Gifters in Frontline (Row 3, slots 20 to 20 + vipGifters.length - 1)
+    vipGifters.forEach((p, idx) => {
+      const slotIndex = 20 + idx;
+      const coords = this.getSlotCoords(teamName, slotIndex);
+      p.targetX = coords.x;
+      p.targetY = coords.y;
+      p.onStage = true;
+      p.visible = true;
+      p.isVipGifter = true;
+      p.setState(targetState);
+      gsap.to(p.scale, { x: p.baseScale, y: p.baseScale, duration: 0.3 });
+    });
+
+    // Available slot indices for open candidates:
+    // Slots 0 to 19 (Row 1 Back & Row 2 Middle), plus any unfilled slots from (20 + vipGifters.length) to 29
+    const availableSlots = [];
+    for (let i = 0; i < 20; i++) availableSlots.push(i);
+    for (let i = 20 + vipGifters.length; i < 30; i++) availableSlots.push(i);
+
+    activeOpenPlayers.forEach((p, idx) => {
+      const slotIndex = availableSlots[idx];
+      const coords = this.getSlotCoords(teamName, slotIndex);
+      p.targetX = coords.x;
+      p.targetY = coords.y;
+      p.onStage = true;
+      p.visible = true;
+      p.isVipGifter = false;
+      p.setState(targetState);
+      gsap.to(p.scale, { x: p.baseScale, y: p.baseScale, duration: 0.3 });
+    });
+
+    this.updateTeamStatsDisplay();
+  }
+
+  // Promote active interacting player to stage if in queue
   promotePlayerToStage(player) {
     player.lastActiveTimestamp = Date.now();
-    const teamMap = (player.team === 'RED') ? this.redTeam : this.blueTeam;
     const isRed = (player.team === 'RED');
 
-    // If player is already on stage, update timestamp and return
+    // If player is already on stage, timestamp is refreshed; keep their slot
     if (player.visible && player.onStage) return;
 
-    // Filter players currently on stage
-    const onStagePlayers = Array.from(teamMap.values()).filter(p => p.onStage);
+    // Player is currently off-screen in queue!
+    // If player is a gifter, full re-sync gives them an immediate VIP frontline slot
+    if (player.giftDiamonds > 0) {
+      player.x = CONFIG.STAGE_WIDTH / 2;
+      player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
+      this.syncTeamRoster(player.team, (this.currentState === CONFIG.STATES.MATCH) ? 'idle' : 'idle');
+      gsap.from(player, {
+        y: isRed ? -80 : CONFIG.STAGE_HEIGHT + 80,
+        alpha: 0,
+        duration: 0.45,
+        ease: 'back.out(1.5)'
+      });
+      return;
+    }
 
-    if (onStagePlayers.length >= 14) {
-      // Find the least recently active player to bench
-      onStagePlayers.sort((a, b) => (a.lastActiveTimestamp || 0) - (b.lastActiveTimestamp || 0));
-      const benched = onStagePlayers[0];
+    // Player is a regular like/comment engager:
+    // Find the on-stage player in OPEN slots (isVipGifter !== true) with lowest priority
+    const teamMap = isRed ? this.redTeam : this.blueTeam;
+    const onStageRegulars = Array.from(teamMap.values()).filter(p => p.onStage && !p.isVipGifter);
+
+    const maxRegularSlots = 30 - Math.min(10, Array.from(teamMap.values()).filter(p => p.giftDiamonds > 0).length);
+    if (onStageRegulars.length >= maxRegularSlots) {
+      onStageRegulars.sort((a, b) => this.getPriorityScore(a) - this.getPriorityScore(b));
+      const benched = onStageRegulars[0];
       benched.onStage = false;
       benched.visible = false;
 
-      // Assign benched player's slot coordinates to the incoming active player
+      // Transfer slot coordinates with snappy drop-in
       player.x = benched.targetX;
       player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
       player.targetX = benched.targetX;
       player.targetY = benched.targetY;
-    } else {
-      // Free slot available
-      const idx = onStagePlayers.length;
-      const cols = 7;
-      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
-      const row = Math.floor(idx / cols);
-      const col = idx % cols;
-      player.targetX = 140 + col * spacingX;
-      player.targetY = isRed ? ((row === 0) ? 200 : 315) : ((row === 0) ? 1605 : 1720);
-      player.x = player.targetX;
-      player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
-    }
+      player.onStage = true;
+      player.visible = true;
+      player.isVipGifter = false;
 
-    player.onStage = true;
-    player.visible = true;
-    gsap.from(player, {
-      y: isRed ? -90 : CONFIG.STAGE_HEIGHT + 90,
-      alpha: 0,
-      duration: 0.45,
-      ease: 'back.out(1.5)'
-    });
+      gsap.from(player, {
+        y: isRed ? -80 : CONFIG.STAGE_HEIGHT + 80,
+        alpha: 0,
+        duration: 0.45,
+        ease: 'back.out(1.5)'
+      });
+    } else {
+      this.syncTeamRoster(player.team, 'idle');
+    }
 
     this.updateTeamStatsDisplay();
   }
 
   repositionLobbyAvatars() {
-    const arrange = (teamMap, isRed) => {
-      const allAvatars = Array.from(teamMap.values());
-      if (allAvatars.length === 0) return;
-
-      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
-
-      const active = allAvatars.slice(0, 14);
-      const queued = allAvatars.slice(14);
-
-      queued.forEach(av => {
-        av.visible = false;
-        av.onStage = false;
-      });
-
-      const cols = 7;
-      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
-      const startX = 140;
-
-      active.forEach((av, idx) => {
-        av.visible = true;
-        av.onStage = true;
-        av.setState('idle');
-        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.35 });
-        const row = Math.floor(idx / cols);
-        const col = idx % cols;
-        av.targetX = startX + col * spacingX;
-        av.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
-      });
-    };
-
-    arrange(this.redTeam, true);
-    arrange(this.blueTeam, false);
-    this.updateTeamStatsDisplay();
+    this.syncTeamRoster('RED', 'idle');
+    this.syncTeamRoster('BLUE', 'idle');
   }
 
   repositionShowcaseAvatars() {
-    const arrange = (teamMap, isRed) => {
-      const allAvatars = Array.from(teamMap.values());
-      if (allAvatars.length === 0) return;
-
-      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
-
-      const active = allAvatars.slice(0, 14);
-      const queued = allAvatars.slice(14);
-
-      queued.forEach(av => {
-        av.visible = false;
-        av.onStage = false;
-      });
-
-      const cols = 7;
-      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
-      const startX = 140;
-
-      active.forEach((av, idx) => {
-        av.visible = true;
-        av.onStage = true;
-        av.setState('idle');
-        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.3 });
-        const row = Math.floor(idx / cols);
-        const col = idx % cols;
-        av.targetX = startX + col * spacingX;
-        av.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
-      });
-    };
-
-    arrange(this.redTeam, true);
-    arrange(this.blueTeam, false);
-    this.updateTeamStatsDisplay();
+    this.syncTeamRoster('RED', 'idle');
+    this.syncTeamRoster('BLUE', 'idle');
   }
 
   repositionMatchAvatars() {
-    const arrange = (teamMap, isRed) => {
-      const allAvatars = Array.from(teamMap.values());
-      if (allAvatars.length === 0) return;
-
-      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
-
-      const active = allAvatars.slice(0, 14);
-      const queued = allAvatars.slice(14);
-
-      queued.forEach(av => {
-        av.visible = false;
-        av.onStage = false;
-      });
-
-      const cols = 7;
-      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
-      const startX = 140;
-
-      active.forEach((av, idx) => {
-        av.visible = true;
-        av.onStage = true;
-        av.setState('idle'); // IDLE! Does not emit static lines. Only pulses when action triggered!
-        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.3 });
-        const row = Math.floor(idx / cols);
-        const col = idx % cols;
-        av.targetX = startX + col * spacingX;
-        // Red: Row 0 at 200 (back row), Row 1 at 315 (front battle line)
-        // Blue: Row 0 at 1605 (front battle line), Row 1 at 1720 (back row)
-        if (isRed) {
-          av.targetY = (row === 0) ? 200 : 315;
-        } else {
-          av.targetY = (row === 0) ? 1605 : 1720;
-        }
-      });
-    };
-
-    arrange(this.redTeam, true);
-    arrange(this.blueTeam, false);
-    this.updateTeamStatsDisplay();
+    this.syncTeamRoster('RED', 'idle');
+    this.syncTeamRoster('BLUE', 'idle');
   }
 
+  updateTeamStatsDisplay() {
+    const redTotal = this.redTeam.size;
+    const blueTotal = this.blueTeam.size;
+    const redActive = Array.from(this.redTeam.values()).filter(p => p.onStage).length;
+    const blueActive = Array.from(this.blueTeam.values()).filter(p => p.onStage).length;
+    const redQueue = Math.max(0, redTotal - 30);
+    const blueQueue = Math.max(0, blueTotal - 30);
+
+    this.arena.updateTeamStats(redActive, this.redScore, blueActive, this.blueScore, redQueue, blueQueue);
+  }
+
+  // --- VICTORY PODIUM (Big Winners, Top 3 Royal Crowns, Top 10 MVPs, Background Cheering) ---
   setupVictoryPodium() {
     const winningMap = (this.winnerTeam === 'RED') ? this.redTeam : this.blueTeam;
     const losingMap = (this.winnerTeam === 'RED') ? this.blueTeam : this.redTeam;
 
-    const winners = Array.from(winningMap.values()).sort((a, b) => b.points - a.points);
+    const winners = Array.from(winningMap.values()).sort((a, b) => {
+      // Sort by gifts first, then points
+      if (b.giftDiamonds !== a.giftDiamonds) return b.giftDiamonds - a.giftDiamonds;
+      return b.points - a.points;
+    });
     const losers = Array.from(losingMap.values());
 
-    // 1. Center Podium: Top 3 Gifters / Contributors
+    // 1. Center Podium: Top 3 Gifters in full scale glory (2.2x - 2.45x with Royal Crowns)
     const podiumCoords = [
-      { x: CONFIG.STAGE_WIDTH / 2, y: CONFIG.CORRIDOR.CENTER_Y - 40, scale: 1.35 },     // 1st Place
-      { x: CONFIG.STAGE_WIDTH / 2 - 190, y: CONFIG.CORRIDOR.CENTER_Y + 40, scale: 1.15 }, // 2nd Place
-      { x: CONFIG.STAGE_WIDTH / 2 + 190, y: CONFIG.CORRIDOR.CENTER_Y + 40, scale: 1.15 }  // 3rd Place
+      { x: CONFIG.STAGE_WIDTH / 2, y: 900, scale: 2.45, rank: 1 },       // 1st Place (Gold Crown)
+      { x: CONFIG.STAGE_WIDTH / 2 - 230, y: 955, scale: 2.20, rank: 2 }, // 2nd Place (Silver Crown)
+      { x: CONFIG.STAGE_WIDTH / 2 + 230, y: 955, scale: 2.20, rank: 3 }  // 3rd Place (Bronze Crown)
+    ];
+
+    // 2. Wing Pedestals: Top 4-10 MVPs (Positions 4 to 10 scaled to 1.65x)
+    const wingCoords = [
+      { x: 150, y: 1100 }, // Pos 4
+      { x: 930, y: 1100 }, // Pos 5
+      { x: 260, y: 1190 }, // Pos 6
+      { x: 820, y: 1190 }, // Pos 7
+      { x: 150, y: 1270 }, // Pos 8
+      { x: 930, y: 1270 }, // Pos 9
+      { x: 540, y: 1280 }  // Pos 10
     ];
 
     winners.forEach((av, idx) => {
       av.setState('celebration');
+      av.alpha = 1;
+      av.visible = true;
+
       if (idx < 3) {
+        // Top 3 Gifters: 2.2x - 2.45x with Royal Crowns
         av.targetX = podiumCoords[idx].x;
         av.targetY = podiumCoords[idx].y;
+        av.setCrown(true, podiumCoords[idx].rank);
         gsap.to(av.scale, { x: podiumCoords[idx].scale, y: podiumCoords[idx].scale, duration: 0.5 });
+      } else if (idx < 10) {
+        // Top 4 to 10 MVPs on Tiered Pedestals: 1.65x
+        const wing = wingCoords[idx - 3];
+        av.targetX = wing.x;
+        av.targetY = wing.y;
+        av.setCrown(false);
+        gsap.to(av.scale, { x: 1.65, y: 1.65, duration: 0.5 });
       } else {
-        // Cheering background crowd
-        const row = Math.floor((idx - 3) / 6);
-        const col = (idx - 3) % 6;
-        av.targetX = 130 + col * 160;
-        av.targetY = CONFIG.CORRIDOR.CENTER_Y + 200 + row * 80;
-        gsap.to(av.scale, { x: 0.75, y: 0.75, duration: 0.5 });
+        // Remaining winning roster: Celebrating behind at minimum 1.40x!
+        av.setCrown(false);
+        const crowdIdx = idx - 10;
+        const crowdRow = Math.floor(crowdIdx / 6);
+        const crowdCol = crowdIdx % 6;
+        av.targetX = 140 + crowdCol * 160;
+        av.targetY = 660 + crowdRow * 95;
+        gsap.to(av.scale, { x: 1.40, y: 1.40, duration: 0.5 });
       }
     });
 
-    // 2. Losers in slump posture in corners
+    // 3. Losers in slump posture in corners (dimmed, scale 0.75x)
     losers.forEach((av, idx) => {
       av.setState('defeat');
-      const side = (idx % 2 === 0) ? 90 : CONFIG.STAGE_WIDTH - 90;
-      const yOffset = 180 + Math.floor(idx / 2) * 65;
+      av.setCrown(false);
+      av.alpha = 0.35;
+      const side = (idx % 2 === 0) ? 80 : CONFIG.STAGE_WIDTH - 80;
+      const yOffset = 150 + Math.floor(idx / 2) * 55;
       av.targetX = side;
-      av.targetY = (this.winnerTeam === 'RED') ? CONFIG.BLUE_ZONE.TOP + yOffset : CONFIG.RED_ZONE.TOP + yOffset;
-      gsap.to(av.scale, { x: 0.65, y: 0.65, duration: 0.5 });
+      av.targetY = (this.winnerTeam === 'RED') ? CONFIG.PHYSICS.BLUE_GOAL_Y + yOffset : yOffset;
+      gsap.to(av.scale, { x: 0.75, y: 0.75, duration: 0.5 });
     });
   }
 
@@ -693,42 +759,21 @@ export class GameManager {
     }
     this.allPlayers.set(userData.uniqueId, avatar);
 
-    // Check if slot on stage is available (Max 14 warriors on stage)
-    const onStageCount = Array.from(teamMap.values()).filter(p => p.onStage).length;
-    if (onStageCount <= 14) {
-      avatar.onStage = true;
-      avatar.visible = true;
-
-      const idx = onStageCount - 1;
-      const cols = 7;
-      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
-      const row = Math.floor(idx / cols);
-      const col = idx % cols;
-      avatar.targetX = 140 + col * spacingX;
-      avatar.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
-
-      avatar.x = avatar.targetX;
-      avatar.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
-
-      // Drop-in elastic bounce animation
-      gsap.from(avatar, {
-        y: isRed ? -100 : CONFIG.STAGE_HEIGHT + 100,
-        alpha: 0,
-        duration: 0.65,
-        ease: 'bounce.out'
-      });
-    } else {
-      // Off-stage in supporter queue
-      avatar.onStage = false;
-      avatar.visible = false;
-      avatar.targetX = CONFIG.STAGE_WIDTH / 2;
-      avatar.targetY = isRed ? 200 : 1605;
-      avatar.x = avatar.targetX;
-      avatar.y = avatar.targetY;
-    }
+    avatar.x = CONFIG.STAGE_WIDTH / 2;
+    avatar.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
 
     sounds.playJoin(assignedTeam);
-    this.updateTeamStatsDisplay();
+    this.syncTeamRoster(assignedTeam, (this.currentState === CONFIG.STATES.MATCH) ? 'idle' : 'idle');
+
+    if (avatar.onStage) {
+      gsap.from(avatar, {
+        y: isRed ? -90 : CONFIG.STAGE_HEIGHT + 90,
+        alpha: 0,
+        duration: 0.55,
+        ease: 'bounce.out'
+      });
+    }
+
     return avatar;
   }
 
@@ -767,8 +812,8 @@ export class GameManager {
       // Hit effect on the ball
       this.particles.spawnSpark(this.arena.ball.x, this.arena.ball.y, teamColor, 4);
 
-      // Floating combat text
-      this.showCombatText('+0.15% ❤️', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
+      // Floating combat text (+0.35% impulse)
+      this.showCombatText('+0.35% ❤️', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
 
       sounds.playImpulse();
     }
@@ -820,8 +865,8 @@ export class GameManager {
       // Hit sparks on ball
       this.particles.spawnSpark(this.arena.ball.x, this.arena.ball.y, teamColor, 5);
 
-      // Floating combat text
-      this.showCombatText('+0.15% 💬', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
+      // Floating combat text (+0.45% impulse)
+      this.showCombatText('+0.45% 💬', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
 
       sounds.playLaser();
     }
