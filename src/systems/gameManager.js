@@ -37,6 +37,10 @@ export class GameManager {
     this.redScore = 0;
     this.blueScore = 0;
 
+    // Combat floating text layer
+    this.combatTextContainer = new PIXI.Container();
+    this.hudLayer.addChild(this.combatTextContainer);
+
     // Build HUD & Overlays
     this.buildHUD();
 
@@ -45,20 +49,20 @@ export class GameManager {
   }
 
   buildHUD() {
-    // 1. Center Banner / Countdown Display
+    // 1. Center Banner / Countdown Display - Pinned at Y=445 (Just below Red boundary, zero overlap with ball)
     this.centerBanner = new PIXI.Container();
     this.centerBanner.x = CONFIG.STAGE_WIDTH / 2;
-    this.centerBanner.y = CONFIG.CORRIDOR.CENTER_Y - 140;
+    this.centerBanner.y = 445;
 
     const bannerBg = new PIXI.Graphics();
     bannerBg.beginFill(0x0A0814, 0.92);
     bannerBg.lineStyle(2, 0xBD00FF, 1);
-    bannerBg.drawRoundedRect(-280, -45, 560, 90, 20);
+    bannerBg.drawRoundedRect(-240, -36, 480, 72, 16);
     bannerBg.endFill();
 
     this.bannerTitle = new PIXI.Text('LOBİ & KATILIM ZAMANI', {
       fontFamily: 'Montserrat, sans-serif',
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '900',
       fill: '#00E5FF',
       dropShadow: true,
@@ -69,7 +73,7 @@ export class GameManager {
 
     this.bannerSubText = new PIXI.Text('30s', {
       fontFamily: 'Montserrat, Rajdhani, sans-serif',
-      fontSize: 34,
+      fontSize: 28,
       fontWeight: '900',
       fill: '#FFD700',
     });
@@ -80,10 +84,10 @@ export class GameManager {
     this.centerBanner.addChild(this.bannerSubText);
     this.hudLayer.addChild(this.centerBanner);
 
-    // 2. Joining Prompt Marquee (Bottom / Middle)
+    // 2. Joining Prompt Marquee - Placed at Y=1480 (Just above Blue boundary, corridor stays clear)
     this.promptText = new PIXI.Text("Katılmak için 'kırmızı' veya 'mavi' yazın! (Sadece Takipçiler)", {
       fontFamily: 'Rajdhani, sans-serif',
-      fontSize: 19,
+      fontSize: 18,
       fontWeight: '700',
       fill: '#FFFFFF',
       dropShadow: true,
@@ -92,24 +96,24 @@ export class GameManager {
     });
     this.promptText.anchor.set(0.5);
     this.promptText.x = CONFIG.STAGE_WIDTH / 2;
-    this.promptText.y = CONFIG.CORRIDOR.CENTER_Y + 140;
+    this.promptText.y = 1480;
     this.hudLayer.addChild(this.promptText);
 
-    // 3. Notification Toast Banner (for Auto-balance & Follower alerts)
+    // 3. Notification Toast Banner - Floats at Y=530 below banner
     this.toastContainer = new PIXI.Container();
     this.toastContainer.x = CONFIG.STAGE_WIDTH / 2;
-    this.toastContainer.y = CONFIG.CORRIDOR.CENTER_Y - 240;
+    this.toastContainer.y = 530;
     this.toastContainer.alpha = 0;
 
     const toastBg = new PIXI.Graphics();
     toastBg.beginFill(0x1B0B2E, 0.95);
     toastBg.lineStyle(2, 0xFF0055, 1);
-    toastBg.drawRoundedRect(-320, -26, 640, 52, 14);
+    toastBg.drawRoundedRect(-300, -24, 600, 48, 14);
     toastBg.endFill();
 
     this.toastText = new PIXI.Text('Bildirim', {
       fontFamily: 'Montserrat, sans-serif',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '800',
       fill: '#FFFFFF',
     });
@@ -129,10 +133,35 @@ export class GameManager {
     this.toastText.text = message;
     this.toastText.style.fill = (typeof color === 'string') ? color : '#' + color.toString(16).padStart(6, '0');
     gsap.killTweensOf(this.toastContainer);
-    this.toastContainer.y = CONFIG.CORRIDOR.CENTER_Y - 260;
+    this.toastContainer.y = 510;
     gsap.timeline()
-      .to(this.toastContainer, { alpha: 1, y: CONFIG.CORRIDOR.CENTER_Y - 240, duration: 0.35, ease: 'back.out(1.5)' })
-      .to(this.toastContainer, { alpha: 0, y: CONFIG.CORRIDOR.CENTER_Y - 270, duration: 0.4, delay: 2.5 });
+      .to(this.toastContainer, { alpha: 1, y: 530, duration: 0.35, ease: 'back.out(1.5)' })
+      .to(this.toastContainer, { alpha: 0, y: 500, duration: 0.4, delay: 2.2 });
+  }
+
+  showCombatText(text, x, y, color = 0x00E5FF) {
+    const label = new PIXI.Text(text, {
+      fontFamily: 'Montserrat, Rajdhani, sans-serif',
+      fontSize: 20,
+      fontWeight: '900',
+      fill: (typeof color === 'string') ? color : '#' + color.toString(16).padStart(6, '0'),
+      dropShadow: true,
+      dropShadowColor: '#000000',
+      dropShadowBlur: 6,
+    });
+    label.anchor.set(0.5);
+    label.x = x + (Math.random() - 0.5) * 16;
+    label.y = y;
+    this.combatTextContainer.addChild(label);
+
+    gsap.timeline({
+      onComplete: () => {
+        this.combatTextContainer.removeChild(label);
+        label.destroy();
+      }
+    })
+    .to(label, { y: y - 45, alpha: 1, duration: 0.15 })
+    .to(label, { y: y - 80, alpha: 0, duration: 0.45, ease: 'power1.in' }, '+=0.2');
   }
 
   // --- STATE TRANSITIONS ---
@@ -238,80 +267,179 @@ export class GameManager {
     this.buildLeaderboardView();
   }
 
-  // --- REPOSITIONING HELPERS ---
+  // --- REPOSITIONING & ROSTER MANAGEMENT HELPERS ---
+  updateTeamStatsDisplay() {
+    const redTotal = this.redTeam.size;
+    const blueTotal = this.blueTeam.size;
+    const redActive = Math.min(14, redTotal);
+    const blueActive = Math.min(14, blueTotal);
+    const redQueue = Math.max(0, redTotal - 14);
+    const blueQueue = Math.max(0, blueTotal - 14);
+
+    this.arena.updateTeamStats(redActive, this.redScore, blueActive, this.blueScore, redQueue, blueQueue);
+  }
+
+  // Ensure active interacting players are promoted to the frontline if in queue
+  promotePlayerToStage(player) {
+    player.lastActiveTimestamp = Date.now();
+    const teamMap = (player.team === 'RED') ? this.redTeam : this.blueTeam;
+    const isRed = (player.team === 'RED');
+
+    // If player is already on stage, update timestamp and return
+    if (player.visible && player.onStage) return;
+
+    // Filter players currently on stage
+    const onStagePlayers = Array.from(teamMap.values()).filter(p => p.onStage);
+
+    if (onStagePlayers.length >= 14) {
+      // Find the least recently active player to bench
+      onStagePlayers.sort((a, b) => (a.lastActiveTimestamp || 0) - (b.lastActiveTimestamp || 0));
+      const benched = onStagePlayers[0];
+      benched.onStage = false;
+      benched.visible = false;
+
+      // Assign benched player's slot coordinates to the incoming active player
+      player.x = benched.targetX;
+      player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
+      player.targetX = benched.targetX;
+      player.targetY = benched.targetY;
+    } else {
+      // Free slot available
+      const idx = onStagePlayers.length;
+      const cols = 7;
+      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      player.targetX = 140 + col * spacingX;
+      player.targetY = isRed ? ((row === 0) ? 200 : 315) : ((row === 0) ? 1605 : 1720);
+      player.x = player.targetX;
+      player.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
+    }
+
+    player.onStage = true;
+    player.visible = true;
+    gsap.from(player, {
+      y: isRed ? -90 : CONFIG.STAGE_HEIGHT + 90,
+      alpha: 0,
+      duration: 0.45,
+      ease: 'back.out(1.5)'
+    });
+
+    this.updateTeamStatsDisplay();
+  }
+
   repositionLobbyAvatars() {
     const arrange = (teamMap, isRed) => {
-      const avatars = Array.from(teamMap.values());
-      const count = avatars.length;
-      if (count === 0) return;
+      const allAvatars = Array.from(teamMap.values());
+      if (allAvatars.length === 0) return;
 
-      const cols = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(count))));
-      const spacingX = Math.min(130, (CONFIG.STAGE_WIDTH - 240) / Math.max(1, cols - 1));
-      const startX = (CONFIG.STAGE_WIDTH - (cols - 1) * spacingX) / 2;
-      const baseY = isRed ? 220 : 1720;
+      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
 
-      avatars.forEach((av, idx) => {
+      const active = allAvatars.slice(0, 14);
+      const queued = allAvatars.slice(14);
+
+      queued.forEach(av => {
+        av.visible = false;
+        av.onStage = false;
+      });
+
+      const cols = 7;
+      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
+      const startX = 140;
+
+      active.forEach((av, idx) => {
+        av.visible = true;
+        av.onStage = true;
         av.setState('idle');
-        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.4 });
-        const r = Math.floor(idx / cols);
-        const c = idx % cols;
-        av.targetX = startX + c * spacingX;
-        av.targetY = baseY + (isRed ? r * 80 : -r * 80);
+        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.35 });
+        const row = Math.floor(idx / cols);
+        const col = idx % cols;
+        av.targetX = startX + col * spacingX;
+        av.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
       });
     };
 
     arrange(this.redTeam, true);
     arrange(this.blueTeam, false);
+    this.updateTeamStatsDisplay();
   }
 
   repositionShowcaseAvatars() {
     const arrange = (teamMap, isRed) => {
-      const avatars = Array.from(teamMap.values());
-      const count = avatars.length;
-      if (count === 0) return;
+      const allAvatars = Array.from(teamMap.values());
+      if (allAvatars.length === 0) return;
 
-      const cols = 5;
-      const spacingX = (CONFIG.STAGE_WIDTH - 260) / (cols - 1);
-      const startX = 130;
-      const baseY = isRed ? 180 : 1740;
+      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
 
-      avatars.forEach((av, idx) => {
-        av.setState('idle');
-        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.3 });
-        const r = Math.floor(idx / cols);
-        const c = idx % cols;
-        av.targetX = startX + c * spacingX;
-        av.targetY = baseY + (isRed ? r * 75 : -r * 75);
+      const active = allAvatars.slice(0, 14);
+      const queued = allAvatars.slice(14);
+
+      queued.forEach(av => {
+        av.visible = false;
+        av.onStage = false;
       });
-    };
 
-    arrange(this.redTeam, true);
-    arrange(this.blueTeam, false);
-  }
+      const cols = 7;
+      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
+      const startX = 140;
 
-  repositionMatchAvatars() {
-    const arrange = (teamMap, isRed) => {
-      const avatars = Array.from(teamMap.values());
-      const count = avatars.length;
-      if (count === 0) return;
-
-      const cols = Math.min(8, Math.max(4, count));
-      const spacingX = (CONFIG.STAGE_WIDTH - 240) / Math.max(1, cols - 1);
-      const startX = 120;
-      const lineY = isRed ? CONFIG.RED_ZONE.STATION_Y : CONFIG.BLUE_ZONE.STATION_Y;
-
-      avatars.forEach((av, idx) => {
-        av.setState('pushing');
+      active.forEach((av, idx) => {
+        av.visible = true;
+        av.onStage = true;
+        av.setState('idle');
         gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.3 });
         const row = Math.floor(idx / cols);
         const col = idx % cols;
         av.targetX = startX + col * spacingX;
-        av.targetY = lineY + (isRed ? -row * 65 : row * 65);
+        av.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
       });
     };
 
     arrange(this.redTeam, true);
     arrange(this.blueTeam, false);
+    this.updateTeamStatsDisplay();
+  }
+
+  repositionMatchAvatars() {
+    const arrange = (teamMap, isRed) => {
+      const allAvatars = Array.from(teamMap.values());
+      if (allAvatars.length === 0) return;
+
+      allAvatars.sort((a, b) => (b.lastActiveTimestamp || 0) - (a.lastActiveTimestamp || 0));
+
+      const active = allAvatars.slice(0, 14);
+      const queued = allAvatars.slice(14);
+
+      queued.forEach(av => {
+        av.visible = false;
+        av.onStage = false;
+      });
+
+      const cols = 7;
+      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
+      const startX = 140;
+
+      active.forEach((av, idx) => {
+        av.visible = true;
+        av.onStage = true;
+        av.setState('idle'); // IDLE! Does not emit static lines. Only pulses when action triggered!
+        gsap.to(av.scale, { x: av.baseScale, y: av.baseScale, duration: 0.3 });
+        const row = Math.floor(idx / cols);
+        const col = idx % cols;
+        av.targetX = startX + col * spacingX;
+        // Red: Row 0 at 200 (back row), Row 1 at 315 (front battle line)
+        // Blue: Row 0 at 1605 (front battle line), Row 1 at 1720 (back row)
+        if (isRed) {
+          av.targetY = (row === 0) ? 200 : 315;
+        } else {
+          av.targetY = (row === 0) ? 1605 : 1720;
+        }
+      });
+    };
+
+    arrange(this.redTeam, true);
+    arrange(this.blueTeam, false);
+    this.updateTeamStatsDisplay();
   }
 
   setupVictoryPodium() {
@@ -551,27 +679,11 @@ export class GameManager {
 
     // Create procedural avatar
     const avatar = new Avatar(userData, assignedTeam);
+    avatar.lastActiveTimestamp = Date.now();
     this.charactersLayer.addChild(avatar);
 
-    // Initial spawn coordinates (above screen for Red, below for Blue)
-    const spawnX = 140 + Math.random() * (CONFIG.STAGE_WIDTH - 280);
-    const dropY = (assignedTeam === 'RED') ? -80 : CONFIG.STAGE_HEIGHT + 80;
-    const targetY = (assignedTeam === 'RED') ? 220 + Math.random() * 90 : 1700 - Math.random() * 90;
-
-    avatar.x = spawnX;
-    avatar.y = dropY;
-    avatar.targetX = spawnX;
-    avatar.targetY = targetY;
-
-    // Drop-in elastic bounce animation
-    gsap.from(avatar, {
-      y: dropY,
-      alpha: 0,
-      duration: 0.75,
-      ease: 'bounce.out'
-    });
-
-    sounds.playJoin(assignedTeam);
+    const teamMap = (assignedTeam === 'RED') ? this.redTeam : this.blueTeam;
+    const isRed = (assignedTeam === 'RED');
 
     // Store in maps
     if (assignedTeam === 'RED') {
@@ -581,14 +693,48 @@ export class GameManager {
     }
     this.allPlayers.set(userData.uniqueId, avatar);
 
-    this.arena.updateTeamStats(this.redTeam.size, this.redScore, this.blueTeam.size, this.blueScore);
+    // Check if slot on stage is available (Max 14 warriors on stage)
+    const onStageCount = Array.from(teamMap.values()).filter(p => p.onStage).length;
+    if (onStageCount <= 14) {
+      avatar.onStage = true;
+      avatar.visible = true;
+
+      const idx = onStageCount - 1;
+      const cols = 7;
+      const spacingX = (CONFIG.STAGE_WIDTH - 280) / 6;
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      avatar.targetX = 140 + col * spacingX;
+      avatar.targetY = isRed ? (200 + row * 115) : (1605 + row * 115);
+
+      avatar.x = avatar.targetX;
+      avatar.y = isRed ? -80 : CONFIG.STAGE_HEIGHT + 80;
+
+      // Drop-in elastic bounce animation
+      gsap.from(avatar, {
+        y: isRed ? -100 : CONFIG.STAGE_HEIGHT + 100,
+        alpha: 0,
+        duration: 0.65,
+        ease: 'bounce.out'
+      });
+    } else {
+      // Off-stage in supporter queue
+      avatar.onStage = false;
+      avatar.visible = false;
+      avatar.targetX = CONFIG.STAGE_WIDTH / 2;
+      avatar.targetY = isRed ? 200 : 1605;
+      avatar.x = avatar.targetX;
+      avatar.y = avatar.targetY;
+    }
+
+    sounds.playJoin(assignedTeam);
+    this.updateTeamStatsDisplay();
     return avatar;
   }
 
   handleLike(userData, count = 1) {
     let player = this.allPlayers.get(userData.uniqueId);
     if (!player) {
-      // Auto-join to team with fewer members if not joined yet
       const team = (this.redTeam.size <= this.blueTeam.size) ? 'RED' : 'BLUE';
       player = this.handleJoin(userData, team);
     }
@@ -596,20 +742,38 @@ export class GameManager {
 
     player.likeCount += count;
     player.points += count * 2;
+    player.lastActiveTimestamp = Date.now();
+    const isRed = (player.team === 'RED');
+    const teamColor = isRed ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
 
-    if (player.team === 'RED') {
+    if (isRed) {
       this.redScore += count * 2;
     } else {
       this.blueScore += count * 2;
     }
 
+    // Ensure player is on stage (swaps in if in queue)
+    this.promotePlayerToStage(player);
+
     if (this.currentState === CONFIG.STATES.MATCH) {
       this.physics.applyImpulse(player.team, 'like');
-      this.particles.spawnSpark(player.x, player.y, (player.team === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR, 3);
+
+      // Trigger punchy 0.38s push burst on this character only
+      player.triggerPushBurst(0.38);
+
+      // Fire animated dynamic laser beam from player hands to the central orb
+      this.arena.fireBeam(player.x, isRed ? player.y + 35 : player.y - 35, this.arena.ball.x, this.arena.ball.y, teamColor, false);
+
+      // Hit effect on the ball
+      this.particles.spawnSpark(this.arena.ball.x, this.arena.ball.y, teamColor, 4);
+
+      // Floating combat text
+      this.showCombatText('+0.15% ❤️', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
+
       sounds.playImpulse();
     }
 
-    this.arena.updateTeamStats(this.redTeam.size, this.redScore, this.blueTeam.size, this.blueScore);
+    this.updateTeamStatsDisplay();
   }
 
   handleComment(userData, commentText) {
@@ -631,20 +795,38 @@ export class GameManager {
 
     player.commentCount += 1;
     player.points += 5;
+    player.lastActiveTimestamp = Date.now();
+    const isRed = (player.team === 'RED');
+    const teamColor = isRed ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
 
-    if (player.team === 'RED') {
+    if (isRed) {
       this.redScore += 5;
     } else {
       this.blueScore += 5;
     }
 
+    // Ensure player is on stage
+    this.promotePlayerToStage(player);
+
     if (this.currentState === CONFIG.STATES.MATCH) {
       this.physics.applyImpulse(player.team, 'comment');
-      this.particles.spawnSpark(player.x, player.y, (player.team === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR, 4);
+
+      // Trigger punchy 0.38s push burst on this character only
+      player.triggerPushBurst(0.38);
+
+      // Fire animated dynamic laser beam from player hands to the central orb
+      this.arena.fireBeam(player.x, isRed ? player.y + 35 : player.y - 35, this.arena.ball.x, this.arena.ball.y, teamColor, false);
+
+      // Hit sparks on ball
+      this.particles.spawnSpark(this.arena.ball.x, this.arena.ball.y, teamColor, 5);
+
+      // Floating combat text
+      this.showCombatText('+0.15% 💬', player.x, isRed ? player.y + 50 : player.y - 50, teamColor);
+
       sounds.playLaser();
     }
 
-    this.arena.updateTeamStats(this.redTeam.size, this.redScore, this.blueTeam.size, this.blueScore);
+    this.updateTeamStatsDisplay();
   }
 
   handleGift(userData, giftName, diamondCount = 1) {
@@ -658,24 +840,42 @@ export class GameManager {
     const diamonds = Math.max(1, diamondCount);
     player.giftDiamonds += diamonds;
     player.points += diamonds * 50;
+    player.lastActiveTimestamp = Date.now();
+    const isRed = (player.team === 'RED');
+    const teamColor = isRed ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR;
 
-    if (player.team === 'RED') {
+    if (isRed) {
       this.redScore += diamonds * 50;
     } else {
       this.blueScore += diamonds * 50;
     }
 
-    // Trigger explosive visual aura & scale surge
+    // Ensure player is on stage
+    this.promotePlayerToStage(player);
+
+    // Trigger explosive visual aura & scale surge for 1.2s
     player.triggerGiftAura(diamonds);
     sounds.playGift();
 
     if (this.currentState === CONFIG.STATES.MATCH) {
-      this.physics.applyImpulse(player.team, 'gift', diamonds);
-      this.particles.spawnFirework(this.arena.ball.x, this.arena.ball.y, (player.team === 'RED') ? CONFIG.RED_ZONE.COLOR : CONFIG.BLUE_ZONE.COLOR, 35);
+      const impulsePx = this.physics.applyImpulse(player.team, 'gift', diamonds);
+      const impulsePct = ((impulsePx / CONFIG.STAGE_HEIGHT) * 100).toFixed(1);
+
+      // Fire thick pulsing mega-beam with high voltage arcs to the ball
+      this.arena.fireBeam(player.x, isRed ? player.y + 40 : player.y - 40, this.arena.ball.x, this.arena.ball.y, teamColor, true, diamonds);
+
+      // Camera screen shake!
+      this.arena.triggerScreenShake(Math.min(22, 14 + diamonds * 0.1), 0.45);
+
+      // Massive fireworks & sparks around the ball
+      this.particles.spawnFirework(this.arena.ball.x, this.arena.ball.y, teamColor, 40);
+
+      // Floating combat text
+      this.showCombatText(`💎 +${impulsePct}% MEGA DARBE!`, player.x, isRed ? player.y + 55 : player.y - 55, 0xFFD700);
     }
 
     this.showToast(`🎁 @${player.userData.nickname || player.userData.uniqueId}: ${giftName || 'Hediye'} (${diamonds} 💎)`, '#FFD700');
-    this.arena.updateTeamStats(this.redTeam.size, this.redScore, this.blueTeam.size, this.blueScore);
+    this.updateTeamStatsDisplay();
   }
 
   // --- FAST-FORWARD / NEXT STATE ---
@@ -735,10 +935,8 @@ export class GameManager {
       }
     }
 
-    // 3. Update Arena ball & beams
-    const isMatch = (this.currentState === CONFIG.STATES.MATCH);
+    // 3. Update Arena (ball position, directional pulse rings, and active action laser beams)
     this.arena.update(delta, this.physics.ballY);
-    this.arena.drawEnergyBeams(Array.from(this.redTeam.values()), Array.from(this.blueTeam.values()), isMatch);
 
     // 4. Update all character animations
     this.allPlayers.forEach(avatar => {

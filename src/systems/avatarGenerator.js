@@ -106,9 +106,12 @@ export class Avatar extends PIXI.Container {
     this.generateVisuals();
     this.createNametag();
 
-    // Default scale
-    this.baseScale = 0.85;
+    // Default scale - Increased to 1.45 (1.7x+ larger for mobile/OBS stream visibility)
+    this.baseScale = 1.45;
     this.scale.set(this.baseScale);
+    this.pushTimeout = null;
+    this.lastActiveTimestamp = Date.now();
+    this.onStage = true;
   }
 
   generateVisuals() {
@@ -615,11 +618,19 @@ export class Avatar extends PIXI.Container {
       g.moveTo(14, -10);
       g.lineTo(15, 6);
 
+      // Hands
       g.lineStyle(0);
       g.beginFill(skinColor);
       g.drawCircle(-15, 8, 3.5);
       g.drawCircle(15, 8, 3.5);
       g.endFill();
+
+      // Subtle glowing neon charge nodes on idle hands (ready to strike)
+      g.beginFill(p.accentColor, 0.7);
+      g.drawCircle(-15, 8, 2.2);
+      g.drawCircle(15, 8, 2.2);
+      g.endFill();
+
       this.propsGfx.clear();
     }
   }
@@ -706,21 +717,42 @@ export class Avatar extends PIXI.Container {
     }
   }
 
+  // Temporary pushing burst when sending likes or comments
+  triggerPushBurst(duration = 0.4) {
+    this.lastActiveTimestamp = Date.now();
+    this.setState('pushing');
+
+    if (this.pushTimeout) {
+      clearTimeout(this.pushTimeout);
+    }
+
+    this.pushTimeout = setTimeout(() => {
+      if (this.state === 'pushing') {
+        this.setState('idle');
+      }
+      this.pushTimeout = null;
+    }, duration * 1000);
+  }
+
   // Explosive aura and 1.5x scale surge when sending a gift
   triggerGiftAura(diamondCount = 1) {
-    const scaleFactor = 1.45;
+    const scaleFactor = 1.5;
     const p = this.parts;
+    this.lastActiveTimestamp = Date.now();
+
+    // Trigger pushing burst for 1.2s
+    this.triggerPushBurst(1.2);
 
     // Draw radiant energy aura
     this.auraContainer.removeChildren();
     const auraGfx = new PIXI.Graphics();
-    auraGfx.lineStyle(3, p.accentColor, 1);
-    auraGfx.beginFill(p.secondaryAccent, 0.3);
-    auraGfx.drawCircle(0, 0, 48);
+    auraGfx.lineStyle(4, p.accentColor, 1);
+    auraGfx.beginFill(p.secondaryAccent, 0.4);
+    auraGfx.drawCircle(0, 0, 56);
     auraGfx.endFill();
     this.auraContainer.addChild(auraGfx);
 
-    // Pop scale animation via GSAP
+    // Pop scale animation via GSAP (sustained for 1.2s)
     gsap.killTweensOf(this.scale);
     gsap.timeline()
       .to(this.scale, {
@@ -731,18 +763,18 @@ export class Avatar extends PIXI.Container {
       })
       .to(auraGfx, {
         alpha: 0,
-        duration: 0.8,
+        duration: 1.0,
         ease: 'power1.out',
         onComplete: () => {
           this.auraContainer.removeChildren();
         }
-      }, '+=0.4')
+      }, '+=0.8')
       .to(this.scale, {
         x: this.baseScale,
         y: this.baseScale,
-        duration: 0.4,
+        duration: 0.35,
         ease: 'power2.inOut'
-      }, '-=0.4');
+      }, '-=0.35');
   }
 
   // Update loop called every frame by Pixi ticker
@@ -779,5 +811,13 @@ export class Avatar extends PIXI.Container {
       this.x += (this.targetX - this.x) * 0.12 * delta;
       this.y += (this.targetY - this.y) * 0.12 * delta;
     }
+  }
+
+  destroy(options) {
+    if (this.pushTimeout) {
+      clearTimeout(this.pushTimeout);
+      this.pushTimeout = null;
+    }
+    super.destroy(options);
   }
 }

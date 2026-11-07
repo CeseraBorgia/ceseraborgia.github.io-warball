@@ -36,6 +36,13 @@ export class Arena extends PIXI.Container {
     this.ballPulse = 0;
     this.pushRatio = 0.5; // 0 (Red goal) to 1 (Blue goal)
 
+    // Dynamic action beam pulses (Like, Comment, Gift) - Trigger on action only!
+    this.activeBeams = [];
+
+    // Screen shake state
+    this.shakeIntensity = 0;
+    this.shakeTime = 0;
+
     this.buildStaticElements();
     this.buildBall();
     this.buildUIBadges();
@@ -95,6 +102,7 @@ export class Arena extends PIXI.Container {
 
     // Ball visual layers
     this.ballOuterHalo = new PIXI.Graphics();
+    this.ballPulseRing = new PIXI.Graphics(); // Directional dynamic shockwave ring
     this.ballPlasmaRings = new PIXI.Graphics();
     this.ballCore = new PIXI.Graphics();
     this.ballLightning = new PIXI.Graphics();
@@ -112,6 +120,7 @@ export class Arena extends PIXI.Container {
     this.ballText.anchor.set(0.5);
 
     this.ball.addChild(this.ballOuterHalo);
+    this.ball.addChild(this.ballPulseRing);
     this.ball.addChild(this.ballPlasmaRings);
     this.ball.addChild(this.ballCore);
     this.ball.addChild(this.ballLightning);
@@ -223,55 +232,105 @@ export class Arena extends PIXI.Container {
     }
   }
 
-  updateTeamStats(redCount, redScore, blueCount, blueScore) {
-    this.redStatsText.text = `${redCount} Savaşçı | ${redScore} Puan`;
-    this.blueStatsText.text = `${blueCount} Savaşçı | ${blueScore} Puan`;
+  updateTeamStats(redCount, redScore, blueCount, blueScore, redQueue = 0, blueQueue = 0) {
+    const redQueueStr = redQueue > 0 ? ` (+${redQueue} Sırada)` : '';
+    const blueQueueStr = blueQueue > 0 ? ` (+${blueQueue} Sırada)` : '';
+    this.redStatsText.text = `${redCount} Savaşçı${redQueueStr} | ${redScore} Puan`;
+    this.blueStatsText.text = `${blueCount} Savaşçı${blueQueueStr} | ${blueScore} Puan`;
   }
 
-  // Draw dynamic energy beams from pushing avatars into the ball
-  drawEnergyBeams(redAvatars, blueAvatars, activeMatch) {
-    const beamsGfx = this.beamsGfx;
-    beamsGfx.clear();
-
-    if (!activeMatch) return;
-
-    const bx = this.ball.x;
-    const by = this.ball.y;
-
-    // Draw Red beams
-    redAvatars.forEach(av => {
-      if (av.state === 'pushing') {
-        const jitter = (Math.random() - 0.5) * 14;
-        beamsGfx.lineStyle(3.5, CONFIG.RED_ZONE.COLOR, 0.85);
-        beamsGfx.moveTo(av.x, av.y + 20);
-        beamsGfx.quadraticCurveTo((av.x + bx) / 2 + jitter, (av.y + by) / 2, bx, by);
-
-        // Core laser wire
-        beamsGfx.lineStyle(1.5, 0xFFFFFF, 0.95);
-        beamsGfx.moveTo(av.x, av.y + 20);
-        beamsGfx.quadraticCurveTo((av.x + bx) / 2 + jitter, (av.y + by) / 2, bx, by);
-      }
+  // Fire an action-triggered laser beam or mega-beam to the ball (fades out in 0.4s or 0.9s)
+  fireBeam(fromX, fromY, toX, toY, color, isMega = false, diamonds = 1) {
+    this.activeBeams.push({
+      fromX,
+      fromY,
+      toX,
+      toY,
+      color,
+      isMega,
+      diamonds,
+      life: 0,
+      maxLife: isMega ? 0.9 : 0.38,
+      width: isMega ? 12 : 4.5,
+      coreWidth: isMega ? 4.5 : 1.5,
+      jitter: isMega ? 16 : 7
     });
+  }
 
-    // Draw Blue beams
-    blueAvatars.forEach(av => {
-      if (av.state === 'pushing') {
-        const jitter = (Math.random() - 0.5) * 14;
-        beamsGfx.lineStyle(3.5, CONFIG.BLUE_ZONE.COLOR, 0.85);
-        beamsGfx.moveTo(av.x, av.y - 20);
-        beamsGfx.quadraticCurveTo((av.x + bx) / 2 + jitter, (av.y + by) / 2, bx, by);
+  // Subtle or explosive camera screen shake
+  triggerScreenShake(intensity = 15, duration = 0.45) {
+    this.shakeIntensity = intensity;
+    this.shakeTime = duration;
+  }
 
-        beamsGfx.lineStyle(1.5, 0xFFFFFF, 0.95);
-        beamsGfx.moveTo(av.x, av.y - 20);
-        beamsGfx.quadraticCurveTo((av.x + bx) / 2 + jitter, (av.y + by) / 2, bx, by);
+  // Render only the active pulsed action beams
+  renderBeams(delta) {
+    const gfx = this.beamsGfx;
+    gfx.clear();
+
+    for (let i = this.activeBeams.length - 1; i >= 0; i--) {
+      const b = this.activeBeams[i];
+      b.life += (1 / 60) * delta;
+      if (b.life >= b.maxLife) {
+        this.activeBeams.splice(i, 1);
+        continue;
       }
-    });
+
+      const progress = b.life / b.maxLife;
+      const alpha = Math.max(0, 1 - Math.pow(progress, 1.6));
+
+      const steps = b.isMega ? 16 : 10;
+      const dx = (b.toX - b.fromX) / steps;
+      const dy = (b.toY - b.fromY) / steps;
+
+      // Outer plasma glow for mega gift beams
+      if (b.isMega) {
+        gfx.lineStyle(b.width * 2.2, b.color, alpha * 0.4);
+        gfx.moveTo(b.fromX, b.fromY);
+        for (let s = 1; s <= steps; s++) {
+          const px = b.fromX + dx * s + (s < steps ? (Math.random() - 0.5) * b.jitter * 1.5 : 0);
+          const py = b.fromY + dy * s + (s < steps ? (Math.random() - 0.5) * b.jitter * 1.5 : 0);
+          gfx.lineTo(px, py);
+        }
+      }
+
+      // Main colored laser line
+      gfx.lineStyle(b.width, b.color, alpha * 0.9);
+      gfx.moveTo(b.fromX, b.fromY);
+      for (let s = 1; s <= steps; s++) {
+        const jitterAmount = (s < steps) ? (Math.random() - 0.5) * b.jitter : 0;
+        const px = b.fromX + dx * s + jitterAmount;
+        const py = b.fromY + dy * s + jitterAmount;
+        gfx.lineTo(px, py);
+      }
+
+      // Bright white high-energy laser core
+      gfx.lineStyle(b.coreWidth, 0xFFFFFF, alpha * 0.95);
+      gfx.moveTo(b.fromX, b.fromY);
+      for (let s = 1; s <= steps; s++) {
+        const jitterAmount = (s < steps) ? (Math.random() - 0.5) * (b.jitter * 0.35) : 0;
+        const px = b.fromX + dx * s + jitterAmount;
+        const py = b.fromY + dy * s + jitterAmount;
+        gfx.lineTo(px, py);
+      }
+    }
   }
 
   update(delta, ballY) {
     this.animTime += 0.04 * delta;
     this.ballY = ballY;
     this.ball.y = ballY;
+
+    // 0. Screen shake update
+    if (this.shakeTime > 0) {
+      this.x = (Math.random() - 0.5) * this.shakeIntensity;
+      this.y = (Math.random() - 0.5) * this.shakeIntensity;
+      this.shakeTime -= (1 / 60) * delta;
+      this.shakeIntensity *= Math.pow(0.92, delta);
+    } else {
+      this.x = 0;
+      this.y = 0;
+    }
 
     // Calculate progression percentage (0% = Red Goal at 384, 100% = Blue Goal at 1536)
     const range = CONFIG.CORRIDOR.BOTTOM - CONFIG.CORRIDOR.TOP;
@@ -327,8 +386,11 @@ export class Arena extends PIXI.Container {
       gl.lineTo(x + 15, CONFIG.BLUE_ZONE.TOP + 6);
     }
 
-    // 3. Render Multi-layered Energy Orb
+    // 3. Render Multi-layered Energy Orb & Directional Pulses
     this.renderBallGraphics();
+
+    // 4. Render Active Action Laser Beams
+    this.renderBeams(delta);
   }
 
   renderBallGraphics() {
@@ -352,6 +414,27 @@ export class Arena extends PIXI.Container {
     halo.beginFill(dominantColor, 0.22);
     halo.drawCircle(0, 0, haloR);
     halo.endFill();
+
+    // Dynamic Directional Shockwave Pulse Ring (Expands towards the pushed team)
+    const pulseRing = this.ballPulseRing;
+    pulseRing.clear();
+    const cycle = (t * 2.2) % 1; // 0 to 1
+    const pRadius = r + 12 + cycle * 50;
+    const pAlpha = (1 - cycle) * 0.75;
+
+    if (this.pushRatio > 0.52) {
+      // Red pushing down into Blue territory: expanding Red downward shockwave
+      pulseRing.lineStyle(3.5, CONFIG.RED_ZONE.COLOR, pAlpha);
+      pulseRing.drawEllipse(0, cycle * 14, pRadius, pRadius * 0.82);
+    } else if (this.pushRatio < 0.48) {
+      // Blue pushing up into Red territory: expanding Blue upward shockwave
+      pulseRing.lineStyle(3.5, CONFIG.BLUE_ZONE.COLOR, pAlpha);
+      pulseRing.drawEllipse(0, -cycle * 14, pRadius, pRadius * 0.82);
+    } else {
+      // Neutral zero-gravity corona ring
+      pulseRing.lineStyle(2.5, 0xBD00FF, pAlpha * 0.55);
+      pulseRing.drawCircle(0, 0, pRadius);
+    }
 
     // Plasma Rings (Rotating in opposite directions)
     const rings = this.ballPlasmaRings;
