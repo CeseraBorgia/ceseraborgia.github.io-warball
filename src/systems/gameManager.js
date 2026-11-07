@@ -235,8 +235,8 @@ export class GameManager {
     gsap.killTweensOf(container);
     gsap.killTweensOf(container.scale);
 
-    const targetY = isRed ? 128 : 1792;
-    const startY = isRed ? 100 : 1820;
+    const targetY = isRed ? 112 : 1805;
+    const startY = isRed ? 85 : 1830;
 
     container.y = startY;
     container.alpha = 0;
@@ -502,13 +502,13 @@ export class GameManager {
 
     let y;
     if (isRed) {
-      if (row === 0) y = 170;      // Row 1 (Back Row)
-      else if (row === 1) y = 250; // Row 2 (Middle Row)
+      if (row === 0) y = 160;      // Row 1 (Back Row)
+      else if (row === 1) y = 245; // Row 2 (Middle Row)
       else y = 330;                // Row 3 (Frontline VIP Row near goal Y=480)
     } else {
-      if (row === 0) y = 1740;     // Row 1 (Back Row)
-      else if (row === 1) y = 1660;// Row 2 (Middle Row)
-      else y = 1580;               // Row 3 (Frontline VIP Row near goal Y=1440)
+      if (row === 0) y = 1755;     // Row 1 (Back Row)
+      else if (row === 1) y = 1670;// Row 2 (Middle Row)
+      else y = 1585;               // Row 3 (Frontline VIP Row near goal Y=1440)
     }
 
     return { x, y, isFrontline: (row === 2) };

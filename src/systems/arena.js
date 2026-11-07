@@ -209,16 +209,16 @@ export class Arena extends PIXI.Container {
     this.uiOverlayContainer.addChild(this.tickersContainer);
 
     // Red Team Tickers (Top Edge, Y ≈ 30px to 80px)
-    // Row 1: Y = 28px, Speed = 52 px/s
-    // Row 2: Y = 74px, Speed = 40 px/s
-    this.redTicker1 = new MarqueeRow(28, 52, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ KIRMIZI TAKIM ARAMIZA KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
-    this.redTicker2 = new MarqueeRow(74, 40, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ ATEŞ GÜCÜNE KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+    // Row 1: Y = 30px, Speed = 52 px/s
+    // Row 2: Y = 66px, Speed = 40 px/s
+    this.redTicker1 = new MarqueeRow(30, 52, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ KIRMIZI TAKIM ARAMIZA KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
+    this.redTicker2 = new MarqueeRow(66, 40, CONFIG.RED_ZONE.COLOR_HEX, '⚔️ ATEŞ GÜCÜNE KATIL! ⚔️ Chate "kırmızı" yaz! ⚔️');
 
     // Blue Team Tickers (Bottom Edge, Y ≈ 1840px to 1890px)
-    // Row 1: Y = 1844px, Speed = 44 px/s
-    // Row 2: Y = 1892px, Speed = 56 px/s
-    this.blueTicker1 = new MarqueeRow(1844, 44, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ MAVİ TAKIM ARAMIZA KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
-    this.blueTicker2 = new MarqueeRow(1892, 56, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ SİBER GÜCE KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+    // Row 1: Y = 1850px, Speed = 44 px/s
+    // Row 2: Y = 1886px, Speed = 56 px/s
+    this.blueTicker1 = new MarqueeRow(1850, 44, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ MAVİ TAKIM ARAMIZA KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
+    this.blueTicker2 = new MarqueeRow(1886, 56, CONFIG.BLUE_ZONE.COLOR_HEX, '🛡️ SİBER GÜCE KATIL! 🛡️ Chate "mavi" yaz! 🛡️');
 
     this.tickersContainer.addChild(this.redTicker1.container);
     this.tickersContainer.addChild(this.redTicker2.container);
@@ -287,75 +287,15 @@ export class Arena extends PIXI.Container {
   }
 
   buildUIBadges() {
-    // Red Team Top Header Badge
+    // Red Team Top Header Badge - Removed & hidden to reclaim vertical space for marquee tickers & avatars
     this.redBadge = new PIXI.Container();
-    this.redBadge.x = CONFIG.STAGE_WIDTH / 2;
-    this.redBadge.y = 51;
+    this.redBadge.visible = false;
+    this.redStatsText = new PIXI.Text('', { fontSize: 1 });
 
-    const rBg = new PIXI.Graphics();
-    rBg.beginFill(0x160814, 0.94);
-    rBg.lineStyle(2.5, CONFIG.RED_ZONE.COLOR, 1);
-    rBg.drawRoundedRect(-220, -25, 440, 50, 14);
-    rBg.endFill();
-
-    this.redTitleText = new PIXI.Text('KIRMIZI TAKIM', {
-      fontFamily: 'Montserrat, sans-serif',
-      fontSize: 22,
-      fontWeight: '900',
-      fill: CONFIG.RED_ZONE.COLOR_HEX,
-      dropShadow: true,
-      dropShadowColor: CONFIG.RED_ZONE.COLOR_HEX,
-      dropShadowBlur: 8,
-    });
-    this.redTitleText.anchor.set(0.5, 0.7);
-
-    this.redStatsText = new PIXI.Text('0 Savaşçı | 0 Puan', {
-      fontFamily: 'Rajdhani, sans-serif',
-      fontSize: 15,
-      fontWeight: '700',
-      fill: '#E2E8F0',
-    });
-    this.redStatsText.anchor.set(0.5, -0.6);
-
-    this.redBadge.addChild(rBg);
-    this.redBadge.addChild(this.redTitleText);
-    this.redBadge.addChild(this.redStatsText);
-    this.uiOverlayContainer.addChild(this.redBadge);
-
-    // Blue Team Bottom Header Badge
+    // Blue Team Bottom Header Badge - Removed & hidden to reclaim vertical space for marquee tickers & avatars
     this.blueBadge = new PIXI.Container();
-    this.blueBadge.x = CONFIG.STAGE_WIDTH / 2;
-    this.blueBadge.y = 1868;
-
-    const bBg = new PIXI.Graphics();
-    bBg.beginFill(0x06141F, 0.94);
-    bBg.lineStyle(2.5, CONFIG.BLUE_ZONE.COLOR, 1);
-    bBg.drawRoundedRect(-220, -25, 440, 50, 14);
-    bBg.endFill();
-
-    this.blueTitleText = new PIXI.Text('MAVİ TAKIM', {
-      fontFamily: 'Montserrat, sans-serif',
-      fontSize: 22,
-      fontWeight: '900',
-      fill: CONFIG.BLUE_ZONE.COLOR_HEX,
-      dropShadow: true,
-      dropShadowColor: CONFIG.BLUE_ZONE.COLOR_HEX,
-      dropShadowBlur: 8,
-    });
-    this.blueTitleText.anchor.set(0.5, 0.7);
-
-    this.blueStatsText = new PIXI.Text('0 Savaşçı | 0 Puan', {
-      fontFamily: 'Rajdhani, sans-serif',
-      fontSize: 15,
-      fontWeight: '700',
-      fill: '#E2E8F0',
-    });
-    this.blueStatsText.anchor.set(0.5, -0.6);
-
-    this.blueBadge.addChild(bBg);
-    this.blueBadge.addChild(this.blueTitleText);
-    this.blueBadge.addChild(this.blueStatsText);
-    this.uiOverlayContainer.addChild(this.blueBadge);
+    this.blueBadge.visible = false;
+    this.blueStatsText = new PIXI.Text('', { fontSize: 1 });
 
     // Center Corridor Distance Markers
     this.markersGfx = new PIXI.Graphics();
