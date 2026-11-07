@@ -3,7 +3,7 @@
  * Neon Cyberpunk / Synthwave Rave arena with perspective grid, laser fences & energy orb.
  */
 
-import { CONFIG } from '../config.js';
+import { CONFIG } from '../config.js?v=20261107_v4';
 
 const PIXI = window.PIXI;
 
@@ -15,13 +15,6 @@ class MarqueeRow {
     this.colorHex = colorHex;
     this.defaultText = defaultText;
     this.spacing = 60;
-
-    // Subtle dark cyber track strip
-    this.trackBg = new PIXI.Graphics();
-    this.trackBg.beginFill(0x070510, 0.72);
-    this.trackBg.drawRect(0, -10, CONFIG.STAGE_WIDTH, 20);
-    this.trackBg.endFill();
-    this.container.addChild(this.trackBg);
 
     const style = {
       fontFamily: 'Montserrat, Rajdhani, sans-serif',
@@ -287,15 +280,16 @@ export class Arena extends PIXI.Container {
   }
 
   buildUIBadges() {
-    // Red Team Top Header Badge - Removed & hidden to reclaim vertical space for marquee tickers & avatars
+    // Red and Blue Team Header Banners are completely removed to reclaim vertical space
     this.redBadge = new PIXI.Container();
     this.redBadge.visible = false;
-    this.redStatsText = new PIXI.Text('', { fontSize: 1 });
+    this.redBadge.renderable = false;
+    this.redStatsText = { text: '' };
 
-    // Blue Team Bottom Header Badge - Removed & hidden to reclaim vertical space for marquee tickers & avatars
     this.blueBadge = new PIXI.Container();
     this.blueBadge.visible = false;
-    this.blueStatsText = new PIXI.Text('', { fontSize: 1 });
+    this.blueBadge.renderable = false;
+    this.blueStatsText = { text: '' };
 
     // Center Corridor Distance Markers
     this.markersGfx = new PIXI.Graphics();
@@ -330,10 +324,7 @@ export class Arena extends PIXI.Container {
   }
 
   updateTeamStats(redCount, redScore, blueCount, blueScore, redQueue = 0, blueQueue = 0) {
-    const redQueueStr = redQueue > 0 ? ` (+${redQueue} Sırada)` : '';
-    const blueQueueStr = blueQueue > 0 ? ` (+${blueQueue} Sırada)` : '';
-    this.redStatsText.text = `${redCount} Savaşçı${redQueueStr} | ${redScore} Puan`;
-    this.blueStatsText.text = `${blueCount} Savaşçı${blueQueueStr} | ${blueScore} Puan`;
+    // Header boxes removed - stats now reflected directly on individual character tags and marquee stream
   }
 
   // Reset arena state between rounds

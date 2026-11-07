@@ -3,9 +3,9 @@
  * Coordinates Lobby, Roster Showcase, Tug-of-War Match, Victory Podium, and Leaderboard.
  */
 
-import { CONFIG } from '../config.js';
-import { Avatar } from './avatarGenerator.js';
-import { sounds } from './soundManager.js';
+import { CONFIG } from '../config.js?v=20261107_v4';
+import { Avatar } from './avatarGenerator.js?v=20261107_v4';
+import { sounds } from './soundManager.js?v=20261107_v4';
 
 const PIXI = window.PIXI;
 const gsap = window.gsap;

@@ -3,13 +3,13 @@
  * Target Resolution: 1080 x 1920 (9:16 Vertical)
  */
 
-import { CONFIG } from './config.js';
-import { Arena } from './systems/arena.js';
-import { TugOfWarPhysics } from './systems/physics.js';
-import { ParticlePool } from './systems/particlePool.js';
-import { GameManager } from './systems/gameManager.js';
-import { TikTokBridge } from './systems/tiktokBridge.js';
-import { sounds } from './systems/soundManager.js';
+import { CONFIG } from './config.js?v=20261107_v4';
+import { Arena } from './systems/arena.js?v=20261107_v4';
+import { TugOfWarPhysics } from './systems/physics.js?v=20261107_v4';
+import { ParticlePool } from './systems/particlePool.js?v=20261107_v4';
+import { GameManager } from './systems/gameManager.js?v=20261107_v4';
+import { TikTokBridge } from './systems/tiktokBridge.js?v=20261107_v4';
+import { sounds } from './systems/soundManager.js?v=20261107_v4';
 
 const PIXI = window.PIXI;
 
