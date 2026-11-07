@@ -1,0 +1,25 @@
+{
+  "name": "ballwar",
+  "version": "1.0.0",
+  "description": "BallWar - TikTok Live Interactive Tug-of-War Game (1080x1920 9:16)",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "npx serve . -l 3000",
+    "tiktok": "node server.js"
+  },
+  "keywords": [
+    "tiktok-live",
+    "interactive-game",
+    "tug-of-war",
+    "pixijs",
+    "obs-stream"
+  ],
+  "author": "CeseraBorgia",
+  "license": "MIT",
+  "dependencies": {
+    "tiktok-live-connector": "^1.2.0",
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Rajdhani:wght@600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #06050C;
+  font-family: 'Montserrat', 'Rajdhani', sans-serif;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 1080 x 1920 9:16 Aspect Ratio Responsive Container */
+#game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vh * 9 / 16);
+  max-height: 100vh;
+  aspect-ratio: 9 / 16;
+  background: #0A0814;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(189, 0, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Inside OBS Browser Source (when resolution is set to 1080x1920) */
+@media (min-width: 1080px) and (min-height: 1920px) {
+  #game-container {
+    max-width: 1080px;
+    max-height: 1920px;
+    box-shadow: none;
+  }
+}
+
+.game-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  display: block;
+}
+
+/* On-Screen Dev Tools Floating Panel */
+#dev-control-panel {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  width: 320px;
+  background: rgba(14, 11, 26, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(189, 0, 255, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 15px rgba(189, 0, 255, 0.3);
+  font-family: 'Rajdhani', sans-serif;
+  z-index: 9999;
+  font-size: 13px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.dev-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(189, 0, 255, 0.2);
+  border-bottom: 1px solid rgba(189, 0, 255, 0.3);
+}
+
+.dev-title {
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #00E5FF;
+  font-size: 13px;
+}
+
+#dev-toggle-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFF;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+  font-weight: bold;
+}
+#dev-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dev-body {
+  padding: 10px;
+}
+
+.dev-row {
+  margin-bottom: 8px;
+}
+
+.ws-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94A3B8;
+  display: block;
+}
+
+.dev-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94A3B8;
+  letter-spacing: 1px;
+  margin: 8px 0 4px 0;
+  text-transform: uppercase;
+}
+
+.dev-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.btn {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s, filter 0.15s;
+  text-align: center;
+}
+.btn:hover {
+  filter: brightness(1.2);
+}
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn-red {
+  background: #FF0055;
+  color: #FFFFFF;
+}
+
+.btn-blue {
+  background: #00E5FF;
+  color: #0A0814;
+}
+
+.btn-gray {
+  background: #2D2A3E;
+  color: #E2E8F0;
+  border: 1px solid #443F5C;
+}
+
+.btn-purple {
+  background: #BD00FF;
+  color: #FFFFFF;
+}
+
+.btn-gold {
+  background: #FFB703;
+  color: #0A0814;
+}
+
+.btn-cyan {
+  background: #06D6A0;
+  color: #0A0814;
+}
+
+.dev-footer {
+  font-size: 10px;
+  color: #64748B;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 6px;
+  text-align: center;
+}
+.dev-footer b {
+  color: #E2E8F0;
+}
